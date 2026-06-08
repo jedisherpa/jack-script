@@ -22,6 +22,8 @@
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
     "desktop:build:signed": "tsx scripts/build-signed-desktop.ts",
+    "desktop:package-dmg": "tsx scripts/package-desktop-dmg.ts",
+    "desktop:notarize-dmg": "tsx scripts/notarize-desktop-dmg.ts",
     "desktop:verify-release": "tsx scripts/verify-desktop-release.ts",
     "desktop:verify-signed-release": "tsx scripts/verify-desktop-release.ts --require-developer-id --require-notarized",
     "build": "next build",
