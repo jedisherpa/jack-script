@@ -25,123 +25,10 @@ function EditableTitle({ value, onCommit }) {
   );
 }
 
-function Workspace({ piece, refs, onBack, onGoStudio }) {
-  const [tab, setTab] = React.useState("draft");
-  const [running, setRunning] = React.useState(false);
-  const [gateStatus, setGateStatus] = React.useState({});
-  const isMobile = window.useIsMobile();
-
-  const update = (patch) => window.Store.updatePiece(piece.id, patch);
-
-  const runGates = async () => {
-    setRunning(true); setTab("draft");
-    // First gate is "running", rest "pending"; the rail advances as completed[] grows.
-    const init = {}; window.GATES.forEach((g, i) => init[g.id] = i === 0 ? "running" : "pending"); setGateStatus(init);
-
-    // Apply the completed[] list from /review/status onto the per-gate rail: each
-    // listed gate is done, and the first not-yet-completed gate shows as running.
-    const applyCompleted = (completed) => {
-      const set = new Set(completed || []);
-      setGateStatus(() => {
-        const next = {}; let runningMarked = false;
-        window.GATES.forEach((g) => {
-          if (set.has(g.id)) { next[g.id] = "done"; }
-          else if (!runningMarked) { next[g.id] = "running"; runningMarked = true; }
-          else { next[g.id] = "pending"; }
-        });
-        return next;
-      });
-    };
-
-    let polling = true;
-    const poll = async () => {
-      while (polling) {
-        await new Promise((r) => setTimeout(r, 900));
-        if (!polling) break;
-        try {
-          const r = await fetch("/api/pieces/" + piece.id + "/review/status", { headers: { Accept: "application/json" } });
-          if (!r.ok) continue;
-          const st = await r.json();
-          applyCompleted(st.completed);
-          if (st.done) break;
-        } catch (e) { /* transient — keep polling */ }
-      }
-    };
-
-    try {
-      // Persist the latest draft before review so the server reviews current text.
-      await fetch("/api/pieces/" + piece.id, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ original: piece.original }),
-      });
-
-      const pollPromise = poll();
-      const r = await fetch("/api/pieces/" + piece.id + "/review", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-      });
-      polling = false;
-      await pollPromise;
-      if (!r.ok) throw new Error("review failed: " + r.status);
-      const { packet, status } = await r.json();
-      // All gates done; sync the local cache (packet already persisted server-side).
-      const finalStatus = {}; window.GATES.forEach((g) => finalStatus[g.id] = (packet && packet[g.id]) ? "done" : "pending"); setGateStatus(finalStatus);
-      window.Store.updatePiece(piece.id, { packet, status: status || "Reviewed" });
-      setRunning(false);
-      if (packet && Object.keys(packet).length) setTab("review");
-    } catch (e) {
-      polling = false;
-      console.error("Review failed:", e);
-      setGateStatus((s) => {
-        const next = { ...s };
-        window.GATES.forEach((g) => { if (next[g.id] === "running") next[g.id] = "error"; });
-        return next;
-      });
-      setRunning(false);
-    }
-  };
-
-  const refCtx = window.AI.refContext(refs);
-  const findingCount = piece.packet ? window.GATES.reduce((n, g) => n + (piece.packet[g.id] ? piece.packet[g.id].findings.length : 0), 0) : null;
-
-  const tabs = [
-    { id: "draft", label: "Script" },
-    { id: "review", label: "Coverage", badge: findingCount },
-    { id: "revision", label: "Revision" },
-    { id: "breakdown", label: "Breakdown", badge: piece.sceneCount || null },
-    { id: "outputs", label: "Artifacts", badge: (piece.outputOrder || []).length || null },
-    { id: "media", label: "Media", badge: window.Store.mediaForPiece(piece.id).length || null },
-  ];
-
+function Workspace({ piece, refs, onBack, onGoStudio, onUpdatePiece }) {
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      {/* piece header */}
-      <div style={{ padding: isMobile ? "12px 16px 0" : "18px 32px 0", flexShrink: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-            <button className="icon-btn" onClick={onBack} title="Back to Library"><Icon name="back" size={16} /></button>
-            <EditableTitle value={piece.title} onCommit={(t) => update({ title: t })} />
-          </div>
-          <StatusPipeline piece={piece} onSet={(s) => window.Store.setStatus(piece.id, s)} />
-        </div>
-        <Tabs tabs={tabs} active={tab} onChange={setTab} />
-      </div>
-
-      {/* tab body */}
-      {tab === "draft" && (
-        <DraftTab piece={piece} running={running} gateStatus={gateStatus}
-          onRun={runGates} onChangeOriginal={(t) => update({ original: t })}
-          onGoReview={() => setTab("review")} />
-      )}
-      {tab === "review" && (piece.packet
-        ? <ReviewTab piece={piece} />
-        : <EmptyState icon="flag" title="No coverage packet yet" body="Write your script on the Script tab and run Script Coverage. Findings appear here beside your draft." />)}
-      {tab === "revision" && <RevisionTab piece={piece} onUpdate={update} refCtx={refCtx} />}
-      {tab === "breakdown" && <BreakdownTab piece={piece} refs={refs} onGoStudio={onGoStudio} />}
-      {tab === "outputs" && <OutputsTab piece={piece} onUpdate={update} refCtx={refCtx} onGoStudio={onGoStudio} />}
-      {tab === "media" && <MediaTab piece={piece} onGoStudio={onGoStudio} />}
-    </div>
+    <ProductionWorkspace piece={piece} refs={refs} onBack={onBack} onGoStudio={onGoStudio}
+      onUpdatePiece={(p) => onUpdatePiece && onUpdatePiece(p)} />
   );
 }
 
@@ -444,13 +331,10 @@ function App() {
       <div className="topbar">
         <div className="brand" onClick={goLibrary}>
           <span className="mark">Jack <span className="em">Script</span></span>
-          <span className="sub">Screenwriting Workstation</span>
+          <span className="sub">Video Production Pipeline</span>
         </div>
         <nav className="topnav">
-          <button className={view === "library" ? "active" : ""} onClick={goLibrary}>Scripts</button>
-          <button className={view === "book" ? "active" : ""} onClick={() => setView("book")}>Export</button>
-          <button className={view === "gather" ? "active" : ""} onClick={() => setView("gather")}>Research</button>
-          <button className={view === "weave" ? "active" : ""} onClick={() => setView("weave")}>Synthesis</button>
+          <button className={view === "library" ? "active" : ""} onClick={goLibrary}>Productions</button>
           <button className={view === "studio" ? "active" : ""} onClick={() => setView("studio")}>Visual Bible</button>
           <button className={view === "references" ? "active" : ""} onClick={() => setView("references")}>Bible</button>
         </nav>
@@ -464,27 +348,20 @@ function App() {
       </div>
 
       {view === "references" && <References refs={refs} role={role} campaignName={activeCampaign && activeCampaign.name} />}
-      {view === "weave" && (
-        <Weave weave={window.Store.getWeave()} refCtx={refCtx} onOpenPiece={openPiece} />
-      )}
-      {view === "gather" && (
-        <Gather campaignId={state.activeCampaignId} refCtx={refCtx} onGoWeave={() => setView("weave")} />
-      )}
       {view === "studio" && (
         <Studio campaignId={state.activeCampaignId} pieces={campaignPieces} onOpenPiece={openPiece} />
       )}
-      {view === "book" && (
-        <ScriptExport pieces={campaignPieces} campaignName={activeCampaign && activeCampaign.name}
-          onOpenPiece={openPiece} />
-      )}
       {view === "library" && (
         <Library pieces={campaignPieces} campaignName={activeCampaign && activeCampaign.name} onOpen={openPiece}
-          onNew={() => { window.Store.createPiece("Untitled Script"); setView("workspace"); }}
+          onNew={() => { window.Store.createPiece("Untitled Production"); setView("workspace"); }}
           onDelete={(id) => window.Store.deletePiece(id)} />
       )}
-      {inWorkspace && <Workspace piece={active} refs={refs} onBack={goLibrary} onGoStudio={() => setView("studio")} />}
+      {inWorkspace && (
+        <Workspace piece={active} refs={refs} onBack={goLibrary} onGoStudio={() => setView("studio")}
+          onUpdatePiece={(p) => window.Store.updatePiece(p.id, p)} />
+      )}
       {view === "workspace" && !active && (
-        <EmptyState icon="doc" title="No script open" body="Head back to Scripts to open or start one." />
+        <EmptyState icon="doc" title="No production open" body="Head back to Productions to open or start one." />
       )}
       <TweaksLayer theme={state.theme} />
       <DesktopOnboarding />

@@ -191,6 +191,8 @@ export const pieces = pgTable(
     // commentary ({ [gateId]: note }), both fed into the reviser prompt.
     direction: text("direction"),
     gateNotes: jsonb("gate_notes").notNull().default({}),
+    // Skill 11 production pipeline state (brief → script → audio → storyboard → animatic)
+    production: jsonb("production"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

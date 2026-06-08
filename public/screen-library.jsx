@@ -1,4 +1,4 @@
-/* Scripts library — home. List of scripts with status, filter, new script. */
+/* Productions library — Skill 11 pipeline entry. */
 
 function wordCount(t) { return (t || "").trim() ? (t.trim().split(/\s+/).length) : 0; }
 
@@ -18,9 +18,9 @@ function PieceRow({ piece, onOpen, onDelete }) {
   };
   const snippet = (piece.original || "").trim().split("\n").find((l) => l.trim()) || "No script yet — write or import one to begin.";
   const pages = piece.pageEstimate || window.estimatePages(piece.original);
-  const hasPacket = !!piece.packet;
-  const hasRev = !!piece.revision;
-  const nOut = (piece.outputOrder || []).length;
+  const prod = piece.production;
+  const approved = prod ? window.PRODUCTION.approvedCount(prod) : 0;
+  const stage = prod && prod.currentStage ? prod.currentStage : "brief";
   return (
     <div
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
@@ -44,9 +44,8 @@ function PieceRow({ piece, onOpen, onDelete }) {
           <span className="eyebrow">~{pages} pg · {wordCount(piece.original)} words</span>
           <span className="eyebrow">· edited {window.relTime(piece.updatedAt)}</span>
           <div style={{ display: "flex", gap: 7, marginLeft: 4 }}>
-            <ProgressPip on={hasPacket} label="Coverage" />
-            <ProgressPip on={hasRev} label="Revised" />
-            <ProgressPip on={nOut > 0} label={nOut ? `${nOut} artifacts` : "Artifacts"} />
+            <ProgressPip on={approved > 0} label={approved ? `${approved}/5 stages` : "Pipeline"} />
+            <ProgressPip on={stage !== "brief"} label={stage} />
           </div>
         </div>
       </div>
@@ -95,16 +94,15 @@ function Library({ pieces, campaignName, onOpen, onNew, onDelete }) {
       <div style={{ maxWidth: 940, margin: "0 auto", padding: "46px 32px 80px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 6 }}>
           <div>
-            <div className="eyebrow" style={{ marginBottom: 8 }}>{campaignName ? campaignName + " · campaign" : "The Desk"}</div>
-            <h1 style={{ fontSize: 42, letterSpacing: "-0.02em" }}>Scripts</h1>
+            <div className="eyebrow" style={{ marginBottom: 8 }}>{campaignName ? campaignName + " · project" : "Productions"}</div>
+            <h1 style={{ fontSize: 42, letterSpacing: "-0.02em" }}>Productions</h1>
           </div>
           <button className="btn primary" onClick={onNew}>
-            <Icon name="plus" size={16} /> New piece
+            <Icon name="plus" size={16} /> New production
           </button>
         </div>
         <p className="muted" style={{ fontSize: 17, marginTop: 14, maxWidth: "54ch" }}>
-          Every piece you've brought to the desk. You set the status by hand as it moves
-          from draft to formatted.
+          Stage-gated pipeline: Brief → Script → Audio → Storyboard → Animatic. Edit and render unlock in a future release.
         </p>
 
         <div style={{ display: "flex", gap: 6, margin: "28px 0 8px", flexWrap: "wrap" }}>

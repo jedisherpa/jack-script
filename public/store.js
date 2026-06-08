@@ -163,6 +163,7 @@
     return Object.assign({
       campaignId: state.activeCampaignId, status: "Draft",
       original: "", packet: null, revision: null, outputs: {}, outputOrder: [],
+      production: null,
       createdAt: now(), updatedAt: now(),
     }, p);
   }

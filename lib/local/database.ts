@@ -64,6 +64,7 @@ function migrateLooseColumns(db: Database.Database): void {
   addColumn(db, "pieces", "page_estimate", "REAL");
   addColumn(db, "pieces", "scene_count", "INTEGER");
   addColumn(db, "pieces", "parsed_scenes_json", "TEXT");
+  addColumn(db, "pieces", "production_json", "TEXT");
 }
 
 export function localDb(): Database.Database {
@@ -145,6 +146,7 @@ export interface LocalPiece {
   outputOrder: unknown | null;
   direction: string | null;
   gateNotes: Record<string, string>;
+  production: unknown | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -320,6 +322,7 @@ function rowPiece(row: any): LocalPiece {
     outputOrder: parseJson(row.output_order_json, null),
     direction: row.direction,
     gateNotes: parseJson<Record<string, string>>(row.gate_notes_json, {}),
+    production: parseJson(row.production_json, null),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -639,7 +642,7 @@ export function getLocalPiece(id: string, userId: string, workspaceId = LOCAL_WO
 export function updateLocalPiece(
   id: string,
   userId: string,
-  patch: Partial<Pick<LocalPiece, "title" | "original" | "status" | "direction" | "packet" | "revision" | "outputs" | "outputOrder" | "pageEstimate" | "sceneCount" | "parsedScenes" | "format">> & { gateNotes?: Record<string, string> },
+  patch: Partial<Pick<LocalPiece, "title" | "original" | "status" | "direction" | "packet" | "revision" | "outputs" | "outputOrder" | "pageEstimate" | "sceneCount" | "parsedScenes" | "format" | "production">> & { gateNotes?: Record<string, string> },
   workspaceId = LOCAL_WORKSPACE_ID,
 ): LocalPiece | null {
   const existing = getLocalPiece(id, userId, workspaceId);
@@ -661,6 +664,7 @@ export function updateLocalPiece(
            outputs_json = ?,
            output_order_json = ?,
            gate_notes_json = ?,
+           production_json = ?,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?`,
     )
@@ -678,6 +682,7 @@ export function updateLocalPiece(
       JSON.stringify(patch.outputs !== undefined ? patch.outputs : existing.outputs),
       JSON.stringify(patch.outputOrder !== undefined ? patch.outputOrder : existing.outputOrder),
       JSON.stringify(gateNotes),
+      JSON.stringify(patch.production !== undefined ? patch.production : existing.production),
       id,
       userId,
     );

@@ -1,6 +1,6 @@
 export const metadata = {
   title: "Jack Script",
-  description: "Professional screenwriting workstation — local-first AI co-pilot for storytellers",
+  description: "Stage-gated video production pipeline — brief, script, audio, storyboard, and animatic",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
