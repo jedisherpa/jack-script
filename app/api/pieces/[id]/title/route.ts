@@ -6,6 +6,7 @@ import { getLocalPiece, getLocalReferences } from "@/lib/local/database";
 import { isLocalFirstMode } from "@/lib/local/mode";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { craftTitle } from "@/lib/ai/titlePiece";
+import { getUserAI } from "@/lib/llm";
 import { toErrorResponse } from "@/lib/errors";
 
 const notFound = () =>
@@ -47,7 +48,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       : await db.query.references.findFirst({ where: eq(references.campaignId, piece.campaignId) });
     const refCtx = buildRefContext((ref?.doc as ReferencesDoc | undefined) ?? null);
 
-    const title = await craftTitle({ text, refContext: refCtx });
+    const writeAI = await getUserAI("write", user);
+    const title = await craftTitle({ text, refContext: refCtx }, writeAI);
     if (!title) return NextResponse.json({ error: "Couldn't generate a title.", code: "ai" }, { status: 502 });
 
     return NextResponse.json({ title });

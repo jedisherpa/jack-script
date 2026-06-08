@@ -176,7 +176,26 @@ function References({ refs, role, campaignName }) {
   const [aiOpen, setAiOpen] = React.useState(false);
   const campaignId = window.Store.getState().activeCampaignId;
   const set = (key, value) => window.Store.setReferenceSection(key, value);
-  const patch = (key, sub) => set(key, { ...refs[key], ...sub });
+  const patch = (key, sub) => set(key, { ...(refs[key] || {}), ...sub });
+  const stringList = (value) => Array.isArray(value) ? value : (value ? [value] : []);
+  const characters = Array.isArray(refs.characters) ? refs.characters : [];
+  const locations = Array.isArray(refs.locations) ? refs.locations : [];
+  const worldRules = stringList(refs.worldRules);
+  const themes = stringList(refs.themes);
+  const comps = stringList(refs.competitorReferences);
+  const redLineRules = (refs.redLines && Array.isArray(refs.redLines.rules)) ? refs.redLines.rules : [];
+  const legacyStrategy = refs.strategy || { throughlines: [], body: "" };
+  const legacyAudiences = refs.audiences || { list: [] };
+  const legacyRegisters = refs.registers || { list: [], body: "" };
+  const legacyVoiceRules = refs.voiceRules || { rules: [] };
+  const hasLegacy =
+    (legacyStrategy.throughlines && legacyStrategy.throughlines.length) ||
+    legacyStrategy.body ||
+    (legacyAudiences.list && legacyAudiences.list.length) ||
+    (legacyRegisters.list && legacyRegisters.list.length) ||
+    legacyRegisters.body ||
+    (legacyVoiceRules.rules && legacyVoiceRules.rules.length) ||
+    (refs.selfVision && refs.selfVision.body);
 
   return (
     <div className="scroll-y" style={{ flex: 1 }}>
@@ -194,46 +213,108 @@ function References({ refs, role, campaignName }) {
           </span>
         </div>
 
-        <RefSection icon="flag" title="Content Strategy">
+        <RefSection icon="flag" title="Core Story">
+          <div style={{ display: "grid", gap: 14 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="eyebrow">Genre</span>
+              <AutoText value={refs.genre || ""} readOnly={readOnly} onCommit={(v) => set("genre", v)} placeholder="Drama / Indie Feature" style={{ fontSize: 15 }} />
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="eyebrow">Logline</span>
+              <AutoText value={refs.logline || ""} readOnly={readOnly} onCommit={(v) => set("logline", v)} placeholder="One-sentence story promise" style={{ fontSize: 16, lineHeight: 1.65 }} />
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span className="eyebrow">Synopsis</span>
+              <AutoText value={refs.synopsis || ""} readOnly={readOnly} onCommit={(v) => set("synopsis", v)} placeholder="Act-by-act overview" style={{ fontSize: 15.5, lineHeight: 1.7 }} />
+            </label>
+          </div>
+        </RefSection>
+
+        <RefSection icon="book" title="Tone, Theme & Visual Language">
+          <div style={{ display: "grid", gap: 16 }}>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 4 }}>Tone Bible</div>
+              <AutoText value={refs.toneBible || ""} readOnly={readOnly} onCommit={(v) => set("toneBible", v)} placeholder="Voice, emotional temperature, and stylistic rules" style={{ fontSize: 15.5, lineHeight: 1.7 }} />
+            </div>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 4 }}>Visual Language</div>
+              <AutoText value={refs.visualLanguage || ""} readOnly={readOnly} onCommit={(v) => set("visualLanguage", v)} placeholder="Camera, palette, production texture" style={{ fontSize: 15.5, lineHeight: 1.7 }} />
+            </div>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>Themes</div>
+              <RuleList rules={themes} readOnly={readOnly} onChange={(v) => set("themes", v)} />
+            </div>
+          </div>
+        </RefSection>
+
+        <RefSection icon="gear" title="Beat Sheet / Outline">
+          <AutoText value={refs.beatSheet || ""} readOnly={readOnly} onCommit={(v) => set("beatSheet", v)} placeholder="Major beats, act turns, sequence outline" style={{ fontSize: 15.5, lineHeight: 1.7 }} />
+        </RefSection>
+
+        <RefSection icon="book" title="Characters">
+          <EntryList entries={characters} readOnly={readOnly}
+            fields={[
+              { key: "name", ph: "Character name" },
+              { key: "bio", ph: "Bio" },
+              { key: "voice", ph: "Voice" },
+              { key: "arc", ph: "Arc" },
+              { key: "relationships", ph: "Relationships" },
+              { key: "sampleDialogue", ph: "Sample dialogue" },
+            ]}
+            onChange={(v) => set("characters", v)} />
+        </RefSection>
+
+        <RefSection icon="flag" title="World, Locations & Market">
+          <div style={{ display: "grid", gap: 18 }}>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>World Rules</div>
+              <RuleList rules={worldRules} readOnly={readOnly} onChange={(v) => set("worldRules", v)} />
+            </div>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>Locations</div>
+              <EntryList entries={locations} readOnly={readOnly}
+                fields={[{ key: "name", ph: "Location" }, { key: "description", ph: "Description" }, { key: "mood", ph: "Mood" }]}
+                onChange={(v) => set("locations", v)} />
+            </div>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>Comparable Titles / References</div>
+              <RuleList rules={comps} readOnly={readOnly} onChange={(v) => set("competitorReferences", v)} />
+            </div>
+          </div>
+        </RefSection>
+
+        <RefSection icon="warn" title="Red Lines & Boundaries">
+          <RuleList rules={redLineRules} readOnly={readOnly} onChange={(v) => patch("redLines", { rules: v })} />
+        </RefSection>
+
+        <RefSection icon="gear" title="Coverage Gate Specification">
+          <AutoText value={(refs.gateSpec && refs.gateSpec.body) || ""} readOnly={readOnly} onCommit={(v) => patch("gateSpec", { body: v })} style={{ fontSize: 16, lineHeight: 1.7 }} />
+        </RefSection>
+
+        {hasLegacy && <RefSection icon="doc" title="Legacy Editorial Reference">
           <div style={{ marginBottom: 16 }}>
             <div className="eyebrow" style={{ marginBottom: 8 }}>Throughlines</div>
-            <EntryList entries={refs.strategy.throughlines} readOnly={readOnly}
+            <EntryList entries={legacyStrategy.throughlines || []} readOnly={readOnly}
               fields={[{ key: "tag", ph: "tag" }, { key: "name", ph: "Name" }, { key: "note", ph: "What it means" }]}
               onChange={(v) => patch("strategy", { throughlines: v })} />
           </div>
           <div className="eyebrow" style={{ marginBottom: 4 }}>Strategy note</div>
-          <AutoText value={refs.strategy.body} readOnly={readOnly} onCommit={(v) => patch("strategy", { body: v })} style={{ fontSize: 15 }} />
-        </RefSection>
-
-        <RefSection icon="book" title="Defined Audiences">
-          <EntryList entries={refs.audiences.list} readOnly={readOnly}
+          <AutoText value={legacyStrategy.body || ""} readOnly={readOnly} onCommit={(v) => patch("strategy", { body: v })} style={{ fontSize: 15 }} />
+          <div className="eyebrow" style={{ margin: "18px 0 8px" }}>Defined Audiences</div>
+          <EntryList entries={legacyAudiences.list || []} readOnly={readOnly}
             fields={[{ key: "id", ph: "id" }, { key: "name", ph: "Name" }, { key: "note", ph: "Who they are" }]}
             onChange={(v) => patch("audiences", { list: v })} />
-        </RefSection>
-
-        <RefSection icon="book" title="Voice — Two Registers">
-          <EntryList entries={refs.registers.list} readOnly={readOnly}
+          <div className="eyebrow" style={{ margin: "18px 0 8px" }}>Voice Registers</div>
+          <EntryList entries={legacyRegisters.list || []} readOnly={readOnly}
             fields={[{ key: "id", ph: "id" }, { key: "name", ph: "Name" }, { key: "note", ph: "Description" }]}
             onChange={(v) => patch("registers", { list: v })} />
           <div className="eyebrow" style={{ margin: "14px 0 4px" }}>Detection note</div>
-          <AutoText value={refs.registers.body} readOnly={readOnly} onCommit={(v) => patch("registers", { body: v })} style={{ fontSize: 15 }} />
-        </RefSection>
-
-        <RefSection icon="doc" title="Clarity & Communication Rules">
-          <RuleList rules={refs.voiceRules.rules} readOnly={readOnly} onChange={(v) => patch("voiceRules", { rules: v })} />
-        </RefSection>
-
-        <RefSection icon="warn" title="Red Lines & Boundaries">
-          <RuleList rules={refs.redLines.rules} readOnly={readOnly} onChange={(v) => patch("redLines", { rules: v })} />
-        </RefSection>
-
-        <RefSection icon="book" title="Self-Vision — Public Identity">
-          <AutoText value={refs.selfVision.body} readOnly={readOnly} onCommit={(v) => patch("selfVision", { body: v })} style={{ fontSize: 16, lineHeight: 1.7 }} />
-        </RefSection>
-
-        <RefSection icon="gear" title="Gate Specification">
-          <AutoText value={refs.gateSpec.body} readOnly={readOnly} onCommit={(v) => patch("gateSpec", { body: v })} style={{ fontSize: 16, lineHeight: 1.7 }} />
-        </RefSection>
+          <AutoText value={legacyRegisters.body || ""} readOnly={readOnly} onCommit={(v) => patch("registers", { body: v })} style={{ fontSize: 15 }} />
+          <div className="eyebrow" style={{ margin: "18px 0 8px" }}>Clarity & Communication Rules</div>
+          <RuleList rules={legacyVoiceRules.rules || []} readOnly={readOnly} onChange={(v) => patch("voiceRules", { rules: v })} />
+          <div className="eyebrow" style={{ margin: "18px 0 4px" }}>Self-Vision — Public Identity</div>
+          <AutoText value={(refs.selfVision && refs.selfVision.body) || ""} readOnly={readOnly} onCommit={(v) => patch("selfVision", { body: v })} style={{ fontSize: 16, lineHeight: 1.7 }} />
+        </RefSection>}
       </div>
     </div>
   );

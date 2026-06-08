@@ -6,7 +6,7 @@ import { db, campaigns, references, pieces } from "@/lib/db";
 import type { Piece } from "@/lib/db";
 import { getLocalPiece, getLocalReferences, updateLocalPiece } from "@/lib/local/database";
 import { isLocalFirstMode } from "@/lib/local/mode";
-import { ai } from "@/lib/llm";
+import { getUserAI } from "@/lib/llm";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { generateOutputs, type GeneratorPiece } from "@/lib/generators";
 import { outputsBodySchema } from "@/lib/schemas-generators";
@@ -71,12 +71,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       revision: (piece.revision as GeneratorPiece["revision"]) ?? null,
     };
 
+    const writeAI = await getUserAI("write", user);
     const { outputs, order } = await generateOutputs(
       generatorPiece,
       body.active,
       body.audiences,
       refCtx,
-      ai,
+      writeAI,
     );
 
     if (isLocalFirstMode()) {

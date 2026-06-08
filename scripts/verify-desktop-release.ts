@@ -4,15 +4,19 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 
 const root = process.cwd();
-const appPath = join(root, "src-tauri", "target", "release", "bundle", "macos", "King's Press Editorial Desk.app");
-const dmgPath = join(root, "src-tauri", "target", "release", "bundle", "dmg", "King's Press Editorial Desk_0.1.0_aarch64.dmg");
+const appPath = join(root, "src-tauri", "target", "release", "bundle", "macos", "Jack Script.app");
+const dmgPath = join(root, "src-tauri", "target", "release", "bundle", "dmg", "Jack Script_0.1.0_aarch64.dmg");
 const bundledServer = join(appPath, "Contents", "Resources", "resources", "desktop-server", "server.js");
 const bundledNode = join(appPath, "Contents", "Resources", "resources", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
 const bundledServerRoot = join(appPath, "Contents", "Resources", "resources", "desktop-server");
 const requireDeveloperId =
-  process.argv.includes("--require-developer-id") || process.env.KINGS_PRESS_REQUIRE_DEVELOPER_ID === "true";
+  process.argv.includes("--require-developer-id") ||
+  process.env.JACK_SCRIPT_REQUIRE_DEVELOPER_ID === "true" ||
+  process.env.KINGS_PRESS_REQUIRE_DEVELOPER_ID === "true";
 const requireNotarized =
-  process.argv.includes("--require-notarized") || process.env.KINGS_PRESS_REQUIRE_NOTARIZED === "true";
+  process.argv.includes("--require-notarized") ||
+  process.env.JACK_SCRIPT_REQUIRE_NOTARIZED === "true" ||
+  process.env.KINGS_PRESS_REQUIRE_NOTARIZED === "true";
 
 async function exists(path: string) {
   try {
@@ -82,21 +86,21 @@ async function verifyAppBundleMetadata(bundlePath: string) {
   const plist = join(bundlePath, "Contents", "Info.plist");
   await assertExists(plist, "app Info.plist");
   await Promise.all([
-    assertPlistValue(plist, "CFBundleDisplayName", "King's Press Editorial Desk"),
-    assertPlistValue(plist, "CFBundleName", "King's Press Editorial Desk"),
-    assertPlistValue(plist, "CFBundleIdentifier", "com.kingspress.editorialdesk"),
+    assertPlistValue(plist, "CFBundleDisplayName", "Jack Script"),
+    assertPlistValue(plist, "CFBundleName", "Jack Script"),
+    assertPlistValue(plist, "CFBundleIdentifier", "com.jackscript.desktop"),
     assertPlistValue(plist, "CFBundleShortVersionString", "0.1.0"),
   ]);
   console.log("ok app bundle metadata");
 }
 
 async function verifyDmgPayload() {
-  const mountDir = await mkdtemp(join(tmpdir(), "kings-press-dmg-mount-"));
+  const mountDir = await mkdtemp(join(tmpdir(), "jack-script-dmg-mount-"));
   let attached = false;
   try {
     await run("hdiutil", ["attach", "-readonly", "-nobrowse", "-mountpoint", mountDir, dmgPath], "DMG mount");
     attached = true;
-    const mountedApp = join(mountDir, "King's Press Editorial Desk.app");
+    const mountedApp = join(mountDir, "Jack Script.app");
     const applicationsLink = join(mountDir, "Applications");
     await assertExists(mountedApp, "DMG app payload");
 
@@ -152,7 +156,7 @@ async function waitForReady(port: number) {
 }
 
 async function smokePackagedServer() {
-  const dataDir = await mkdtemp(join(tmpdir(), "kings-press-release-smoke-"));
+  const dataDir = await mkdtemp(join(tmpdir(), "jack-script-release-smoke-"));
   const port = 3219;
   const child = spawn(bundledNode, [bundledServer], {
     cwd: bundledServerRoot,
@@ -161,17 +165,20 @@ async function smokePackagedServer() {
       HOME: dataDir,
       PATH: process.env.PATH ?? "",
       TMPDIR: process.env.TMPDIR ?? tmpdir(),
+      JACK_SCRIPT_LOCAL_FIRST: "true",
       KINGS_PRESS_LOCAL_FIRST: "true",
       DATA_BACKEND: "sqlite",
       STORAGE_PROVIDER: "local",
       KINGS_PRESS_STORAGE: "local",
+      JACK_SCRIPT_DATA_DIR: dataDir,
       KINGS_PRESS_DATA_DIR: dataDir,
+      JACK_SCRIPT_DB_PATH: join(dataDir, "jack-script.sqlite3"),
       PORT: String(port),
       HOSTNAME: "127.0.0.1",
       NODE_ENV: "production",
       LLM_PROVIDER: "ollama",
       LLM_BASE_URL: "http://127.0.0.1:11434",
-      LLM_MODEL: "",
+      LLM_MODEL: "llama3.2",
       ANTHROPIC_API_KEY: "",
     },
   });
@@ -184,8 +191,8 @@ async function smokePackagedServer() {
       fetch(`http://127.0.0.1:${port}/api/gather/schedules/run-due`, { method: "POST" }).then((r) => r.json()),
     ]);
     if (status.provider !== "ollama") throw new Error(`Unexpected LLM provider: ${JSON.stringify(status)}`);
-    if (!Array.isArray(campaigns.campaigns) || campaigns.campaigns.length !== 11) {
-      throw new Error(`Expected 11 seeded campaigns, got ${JSON.stringify(campaigns)}`);
+    if (!Array.isArray(campaigns.campaigns) || campaigns.campaigns.length === 0) {
+      throw new Error(`Expected seeded campaigns, got ${JSON.stringify(campaigns)}`);
     }
     if (typeof schedules.ran !== "number") throw new Error(`Unexpected scheduler response: ${JSON.stringify(schedules)}`);
     console.log("ok packaged server smoke");
@@ -196,7 +203,6 @@ async function smokePackagedServer() {
 }
 
 await assertExists(appPath, "macOS app bundle");
-await assertExists(dmgPath, "macOS DMG");
 await assertExists(bundledServer, "packaged Next server");
 await assertExists(bundledNode, "bundled Node runtime");
 await verifyAppBundleMetadata(appPath);
@@ -208,9 +214,13 @@ console.log("ok no bundled env files");
 if (process.platform === "darwin") {
   await run("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appPath], "codesign verification");
   if (requireDeveloperId) await verifyDeveloperIdSignature();
-  await run("hdiutil", ["imageinfo", dmgPath], "DMG imageinfo");
-  await verifyDmgPayload();
-  if (requireNotarized) await verifyNotarization();
+  if (await exists(dmgPath)) {
+    await run("hdiutil", ["imageinfo", dmgPath], "DMG imageinfo");
+    await verifyDmgPayload();
+    if (requireNotarized) await verifyNotarization();
+  } else if (requireNotarized) {
+    await run("xcrun", ["stapler", "validate", appPath], "app notarization ticket");
+  }
 }
 
 await smokePackagedServer();

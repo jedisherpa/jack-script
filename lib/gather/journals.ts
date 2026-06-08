@@ -14,7 +14,7 @@ export async function runJournals(query: string): Promise<GatherItem[]> {
 
 async function crossref(query: string, rows = 4): Promise<GatherItem[]> {
   const url = `https://api.crossref.org/works?rows=${rows}&query=${encodeURIComponent(query)}&mailto=${encodeURIComponent(MAILTO)}`;
-  const json = await fetchJSON<any>(url, { headers: { "User-Agent": `KingsPress/1.0 (mailto:${MAILTO})` } });
+  const json = await fetchJSON<any>(url, { headers: { "User-Agent": `JackScript/0.1 (mailto:${MAILTO})` } });
   return (json?.message?.items ?? []).map((w: any) => ({
     kind: "journal" as const,
     title: (w.title?.[0] ?? "Untitled").trim(),

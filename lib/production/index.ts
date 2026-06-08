@@ -146,9 +146,8 @@ export function syncProductionStages(state: ProductionState, scriptText = ""): P
     }
   }
 
-  const firstOpen =
-    ORDER.find((id) => next.stages[id].status !== "approved" && next.stages[id].status !== "locked") || "brief";
-  next.currentStage = firstOpen;
+  const firstOpen = ORDER.find((id) => next.stages[id].status !== "approved" && next.stages[id].status !== "locked");
+  next.currentStage = firstOpen || "animatic";
   return next;
 }
 

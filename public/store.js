@@ -219,6 +219,12 @@
 
     /* ---- Generic UI prefs (persisted to settings.prefs) ---- */
     getPref(key, fallback) { const p = state.settings && state.settings.prefs; return (p && p[key] != null) ? p[key] : fallback; },
+    setLlmRoles(roles) {
+      api.setPref("llmRoles", roles || {});
+    },
+    getLlmRoles() {
+      return api.getPref("llmRoles", {}) || {};
+    },
     setPref(key, value) {
       if (!state.settings) state.settings = {};
       state.settings.prefs = Object.assign({}, state.settings.prefs || {}, { [key]: value });
@@ -233,7 +239,12 @@
       const c = api.activeCampaign();
       // Default skeleton so screens (which read e.g. strategy.throughlines) never
       // crash during the brief window before a campaign's references hydrate.
-      const SAFE = { strategy: { throughlines: [], body: "" }, audiences: { list: [] }, registers: { list: [], body: "" }, voiceRules: { rules: [] }, redLines: { rules: [] }, selfVision: { body: "" }, gateSpec: { body: "" } };
+      const SAFE = {
+        logline: "", synopsis: "", genre: "", toneBible: "", visualLanguage: "", beatSheet: "",
+        worldRules: [], themes: [], characters: [], locations: [], competitorReferences: [],
+        strategy: { throughlines: [], body: "" }, audiences: { list: [] }, registers: { list: [], body: "" },
+        voiceRules: { rules: [] }, redLines: { title: "Red Lines", rules: [] }, selfVision: { body: "" }, gateSpec: { body: "" },
+      };
       return Object.assign({}, SAFE, (c && c.references) || {});
     },
     setActiveCampaign(id) {

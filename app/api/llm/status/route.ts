@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { publicLLMStatus } from "@/lib/llm";
+import { loadUserLlmRoles, publicLLMStatus } from "@/lib/llm";
 import { toErrorResponse } from "@/lib/errors";
 
 export async function GET() {
   try {
-    await requireUser();
-    return NextResponse.json(publicLLMStatus());
+    const user = await requireUser();
+    const rolePrefs = await loadUserLlmRoles(user.id, user.workspaceId);
+    return NextResponse.json(publicLLMStatus(process.env, rolePrefs));
   } catch (err) {
     return toErrorResponse(err);
   }

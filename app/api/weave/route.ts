@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { db, campaigns, references } from "@/lib/db";
-import { ai } from "@/lib/llm";
+import { getUserAI } from "@/lib/llm";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { runWeave } from "@/lib/weave";
 import { weaveBodySchema } from "@/lib/schemas-weave";
@@ -79,10 +79,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not found.", code: "not_found" }, { status: 404 });
     }
 
+    const writeAI = await getUserAI("write", user);
+
     if (wantsAsync(req)) {
       const job = createJob(user.id);
       // Fire-and-forget; progress + result land in the in-memory job store.
-      void runWeave(body.sources, refCtx, ai, (p) => setProgress(job.id, p))
+      void runWeave(body.sources, refCtx, writeAI, (p) => setProgress(job.id, p))
         .then((result) => completeJob(job.id, result))
         .catch((err: unknown) =>
           failJob(job.id, err instanceof Error ? err.message : "Weave failed."),
@@ -90,7 +92,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ jobId: job.id, status: job.status }, { status: 202 });
     }
 
-    const result = await runWeave(body.sources, refCtx, ai);
+    const result = await runWeave(body.sources, refCtx, writeAI);
     // { extracts, brief, mapping, draft } (+ generatedAt) — the prototype shape.
     return NextResponse.json(result);
   } catch (err) {

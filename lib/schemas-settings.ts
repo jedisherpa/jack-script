@@ -8,6 +8,28 @@
  */
 import { z } from "zod";
 
+export const llmProviderSchema = z.enum([
+  "anthropic",
+  "openai",
+  "openai-compatible",
+  "xai",
+  "grok",
+  "groq",
+  "ollama",
+  "docker-model-runner",
+  "gemini",
+  "morpheus",
+  "kimi",
+]);
+
+const llmRoleSelectionSchema = z
+  .object({
+    provider: llmProviderSchema.optional(),
+    model: z.string().max(128).optional(),
+    baseUrl: z.string().max(512).optional(),
+  })
+  .strict();
+
 /**
  * Non-secret UI prefs. Open-ended (the prototype stores theme / activeCampaignId
  * / tweaks), so we accept an arbitrary JSON object but pin the well-known keys
@@ -17,6 +39,13 @@ export const prefsSchema = z
   .object({
     theme: z.enum(["light", "dark"]).optional(),
     activeCampaignId: z.string().optional(),
+    llmRoles: z
+      .object({
+        write: llmRoleSelectionSchema.optional(),
+        review: llmRoleSelectionSchema.optional(),
+        revise: llmRoleSelectionSchema.optional(),
+      })
+      .optional(),
   })
   .catchall(z.unknown());
 

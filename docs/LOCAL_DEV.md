@@ -1,7 +1,7 @@
 # Local Development
 
-King's Press Editorial Desk is local-first by default. You do not need Docker,
-Supabase, or Postgres for normal desktop development.
+Jack Script is local-first by default. You do not need Docker, Supabase, or
+Postgres for normal browser or desktop development.
 
 ## Prerequisites
 - Node 20+ and npm.
@@ -15,16 +15,16 @@ use environment keys when you choose to test them.
 ## Browser Dev
 ```bash
 npm install
-cp .env.example .env
+cp .env.example .env.local
 ollama pull llama3.2
 npm run dev
 ```
 
 Open http://localhost:3000. With the default `.env.example`, the app uses:
-- SQLite in `.local-data/kings-press.sqlite3`.
+- SQLite in `.local-data/jack-script.sqlite3`.
 - Local app-data storage under `.local-data/storage`.
 - Ollama native chat at `http://127.0.0.1:11434`.
-- A single embedded local owner/workspace with 11 seeded campaigns.
+- A single embedded local owner/workspace with seeded Jack Script projects.
 
 ## Desktop Dev
 ```bash
@@ -79,7 +79,8 @@ npm run desktop:verify-signed-release
 exposing secrets.
 
 Local-first remains the default. Cloud providers are opt-in and use the same
-server-side LLM interface.
+server-side LLM interface. The model picker can route write, review, and revise
+tasks to different providers.
 
 Ollama native local:
 ```bash
@@ -100,15 +101,15 @@ Anthropic hosted:
 ```bash
 LLM_PROVIDER=anthropic
 LLM_MODEL=claude-haiku-4-5
-LLM_API_KEY=sk-ant-...
-ANTHROPIC_API_KEY=sk-ant-...
+LLM_API_KEY=
+ANTHROPIC_API_KEY=
 ```
 
 OpenAI / ChatGPT API:
 ```bash
 LLM_PROVIDER=openai
 LLM_MODEL=gpt-4o-mini
-OPENAI_API_KEY=sk-...
+OPENAI_API_KEY=
 ```
 
 OpenAI-compatible hosted:
@@ -116,21 +117,21 @@ OpenAI-compatible hosted:
 LLM_PROVIDER=openai-compatible
 LLM_MODEL=gpt-4o-mini
 LLM_BASE_URL=https://api.openai.com/v1
-LLM_API_KEY=sk-...
+LLM_API_KEY=
 ```
 
 xAI / Grok:
 ```bash
 LLM_PROVIDER=xai
 LLM_MODEL=grok-4.3
-XAI_API_KEY=xai-...
+XAI_API_KEY=
 ```
 
 Gemini:
 ```bash
 LLM_PROVIDER=gemini
 LLM_MODEL=gemini-2.5-flash
-GEMINI_API_KEY=...
+GEMINI_API_KEY=
 ```
 
 PDF/image extraction needs a multimodal file provider. Text and `.docx` uploads
@@ -139,13 +140,13 @@ fallbacks:
 ```bash
 LLM_FILE_PROVIDER=anthropic
 LLM_FILE_MODEL=claude-haiku-4-5
-LLM_FILE_API_KEY=sk-ant-...
+LLM_FILE_API_KEY=
 ```
 
 ```bash
 LLM_FILE_PROVIDER=gemini
 LLM_FILE_MODEL=gemini-2.5-flash
-LLM_FILE_API_KEY=...
+LLM_FILE_API_KEY=
 ```
 
 ## Hosted Compatibility

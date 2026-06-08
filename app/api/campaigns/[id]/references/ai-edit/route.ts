@@ -4,6 +4,7 @@ import { z } from "zod";
 import { assertAuthor } from "@/lib/auth";
 import { db, campaigns, references } from "@/lib/db";
 import { craftReferencesEdit } from "@/lib/ai/refsEdit";
+import { getUserAI } from "@/lib/llm";
 import { type ReferencesDoc } from "@/lib/refContext";
 import { toErrorResponse } from "@/lib/errors";
 import { getLocalCampaign, getLocalReferences } from "@/lib/local/database";
@@ -42,10 +43,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       : await db.query.references.findFirst({ where: eq(references.campaignId, campaign.id) });
     if (!ref) return notFound();
 
-    const result = await craftReferencesEdit({
-      doc: (ref.doc as ReferencesDoc) ?? {},
-      instruction: body.instruction,
-    });
+    const writeAI = await getUserAI("write", user);
+    const result = await craftReferencesEdit(
+      {
+        doc: (ref.doc as ReferencesDoc) ?? {},
+        instruction: body.instruction,
+      },
+      writeAI,
+    );
 
     if (!result.ok) {
       return NextResponse.json(

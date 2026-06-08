@@ -6,7 +6,7 @@ import { db, campaigns, pieces, references } from "@/lib/db";
 import type { Piece } from "@/lib/db";
 import { getLocalPiece, getLocalReferences, updateLocalPiece } from "@/lib/local/database";
 import { isLocalFirstMode } from "@/lib/local/mode";
-import { ai } from "@/lib/llm";
+import { getUserAI } from "@/lib/llm";
 import { buildGateRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { GATES, runGate, type GateResult } from "@/lib/gates";
 import { toErrorResponse } from "@/lib/errors";
@@ -66,10 +66,12 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       ...((piece.packet as Record<string, GateResult> | null) ?? {}),
     };
 
+    const reviewAI = await getUserAI("review", user);
+
     // Run gates IN ORDER, persisting incrementally after each one.
     for (const gate of GATES) {
       const refCtx = buildGateRefContext(refDoc, gate.id);
-      const result = await runGate(gate, draft, refCtx, ai);
+      const result = await runGate(gate, draft, refCtx, reviewAI);
       packet[gate.id] = result;
       if (isLocalFirstMode()) {
         updateLocalPiece(piece.id, user.id, { packet }, user.workspaceId);

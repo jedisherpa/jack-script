@@ -13,6 +13,7 @@ import {
   normalizeProduction,
   syncProductionStages,
 } from "@/lib/production";
+import { getUserAI } from "@/lib/llm";
 
 const notFound = () =>
   NextResponse.json({ error: "Not found.", code: "not_found" }, { status: 404 });
@@ -48,12 +49,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       refContext = buildRefContext((ref?.doc as Record<string, unknown>) || {});
     }
 
+    const writeAI = body.useLlm === true ? await getUserAI("write", user) : undefined;
     const voiceScript = await draftProductionVoiceScript({
       title: existing.title,
       text: existing.original,
       refContext,
       voiceName: body.voiceName || "Narrator",
       useLlm: body.useLlm === true,
+      client: writeAI,
     });
 
     let production = syncProductionStages(

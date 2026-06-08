@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { db, references, pieces } from "@/lib/db";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { craftVoiceScript } from "@/lib/ai/voiceScript";
+import { getUserAI } from "@/lib/llm";
 import { toErrorResponse } from "@/lib/errors";
 import { getLocalCampaign, getLocalPiece, getLocalReferences } from "@/lib/local/database";
 import { isLocalFirstMode } from "@/lib/local/mode";
@@ -53,11 +54,15 @@ export async function POST(req: Request) {
       }
     }
 
-    const script = await craftVoiceScript({
-      article: { title: piece.title, text },
-      refContext: refCtx,
-      voiceName: body.voiceName,
-    });
+    const writeAI = await getUserAI("write", user);
+    const script = await craftVoiceScript(
+      {
+        article: { title: piece.title, text },
+        refContext: refCtx,
+        voiceName: body.voiceName,
+      },
+      writeAI,
+    );
 
     return NextResponse.json({ script });
   } catch (err) {

@@ -1,7 +1,17 @@
 {
   "name": "jack-script",
   "version": "0.1.0",
-  "private": true,
+  "description": "Local-first screenwriting and stage-gated video production workstation.",
+  "private": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jedisherpa/jack-script.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jedisherpa/jack-script/issues"
+  },
+  "homepage": "https://github.com/jedisherpa/jack-script#readme",
   "type": "module",
   "scripts": {
     "dev": "next dev",

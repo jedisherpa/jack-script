@@ -1,7 +1,7 @@
 /**
  * Professional screenplay PDF — Courier 12pt, standard margins.
  */
-import PDFDocument from "pdfkit";
+import PDFDocument from "pdfkit/js/pdfkit.standalone.js";
 import { parseScreenplay } from "./parser";
 
 export interface PdfMeta {

@@ -5,6 +5,7 @@ import { assertAuthor } from "@/lib/auth";
 import { db, campaigns, references } from "@/lib/db";
 import { styleProfiles, styleFeedback } from "@/db/style-schema";
 import { refineStyleDirective, normalizeKnobs } from "@/lib/ai/style";
+import { getUserAI } from "@/lib/llm";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { toErrorResponse } from "@/lib/errors";
 import {
@@ -58,10 +59,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       : await db.query.references.findFirst({ where: eq(references.campaignId, id) });
     const refCtx = buildRefContext((ref?.doc as ReferencesDoc | undefined) ?? null);
 
+    const writeAI = await getUserAI("write", user);
     const directive = await refineStyleDirective(
       current ? { directive: current.directive } : null,
       { rating: body.rating, knobs, working: body.working, notes: body.notes },
       refCtx,
+      writeAI,
     );
     const rounds = (current?.rounds ?? 0) + 1;
 

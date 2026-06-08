@@ -3,6 +3,7 @@ import {
   approveProductionStage,
   buildStoryboardFromScenes,
   createInitialProduction,
+  initAnimaticForPiece,
   initStoryboardForPiece,
   syncProductionStages,
 } from "@/lib/production";
@@ -44,6 +45,24 @@ describe("production pipeline", () => {
   it("blocks edit and render stages", () => {
     const r = approveProductionStage(createInitialProduction(), "edit");
     expect(r.error).toContain("not available");
+  });
+
+  it("keeps completed productions on animatic", () => {
+    let p = createInitialProduction();
+    p.brief.idea = "Explainer about coffee";
+    let r = approveProductionStage(p, "brief");
+    r = approveProductionStage(r.state, "script", SAMPLE);
+    p = initStoryboardForPiece(r.state, SAMPLE);
+    r = approveProductionStage(p, "audio", SAMPLE);
+    expect(r.error).toContain("voice script");
+    p.audio.voiceScript = "Interior coffee shop. Hello there. Exterior street. Goodbye.";
+    r = approveProductionStage(p, "audio", SAMPLE);
+    p = initAnimaticForPiece(r.state, SAMPLE);
+    r = approveProductionStage(p, "storyboard", SAMPLE);
+    r = approveProductionStage(r.state, "animatic", SAMPLE);
+
+    expect(r.error).toBeUndefined();
+    expect(r.state.currentStage).toBe("animatic");
   });
 
   it("builds storyboard frames from scenes", () => {

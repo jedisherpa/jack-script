@@ -1,5 +1,3 @@
 /target/
-/resources/desktop-server/*
-!/resources/desktop-server/.gitkeep
-/resources/node/*
-!/resources/node/.gitkeep
+/resources/desktop-server/
+/resources/node/

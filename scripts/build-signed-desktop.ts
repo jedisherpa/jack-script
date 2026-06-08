@@ -88,6 +88,9 @@ try {
     configPath,
     JSON.stringify(
       {
+        build: {
+          beforeBundleCommand: "./node_modules/.bin/tsx scripts/sign-sidecar-native.ts",
+        },
         bundle: {
           macOS,
         },
@@ -97,7 +100,7 @@ try {
     )
   );
 
-  console.log("Building Developer ID signed King’s Press desktop release...");
+  console.log("Building Developer ID signed Jack Script desktop release...");
   await run(tauriBin(), ["build", "--ci", "--config", configPath]);
 } finally {
   await rm(tempDir, { recursive: true, force: true });

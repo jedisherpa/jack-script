@@ -9,6 +9,7 @@ import { getLocalPiece, getLocalReferences, updateLocalPiece } from "@/lib/local
 import { isLocalFirstMode } from "@/lib/local/mode";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { condensePost } from "@/lib/ai/condense";
+import { getUserAI } from "@/lib/llm";
 import { toErrorResponse } from "@/lib/errors";
 
 const notFound = () =>
@@ -64,7 +65,8 @@ export async function POST(
         });
     const refCtx = buildRefContext((ref?.doc as ReferencesDoc | undefined) ?? null);
 
-    const draftPost = await condensePost(target.draftPost, refCtx, ratio);
+    const writeAI = await getUserAI("write", user);
+    const draftPost = await condensePost(target.draftPost, refCtx, ratio, writeAI);
 
     const nextOutputs = { ...outputs, [platform]: { ...target, draftPost } };
     if (isLocalFirstMode()) {

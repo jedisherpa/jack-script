@@ -3,10 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAI, LLMError, type LLMAdapter } from "@/lib/llm";
-import { resolveMainLLMConfig, publicLLMStatus } from "@/lib/llm/config";
+import { resolveMainLLMConfig, resolveRoleLLMConfig, publicLLMStatus } from "@/lib/llm/config";
 import { geminiProvider } from "@/lib/llm/providers/gemini";
 import { openAICompatibleProvider } from "@/lib/llm/providers/openaiCompatible";
 import { ollamaProvider } from "@/lib/llm/providers/ollama";
+import { runLLMConnectionTest } from "@/lib/llm/testConnection";
 import { toErrorResponse } from "@/lib/errors";
 
 afterEach(() => {
@@ -64,6 +65,44 @@ describe("LLM config", () => {
       baseUrl: "https://generativelanguage.googleapis.com/v1beta",
       apiKey: "gem-key",
     });
+
+    expect(resolveMainLLMConfig({
+      LLM_PROVIDER: "groq",
+      GROQ_API_KEY: "groq-key",
+    })).toMatchObject({
+      provider: "groq",
+      model: "llama-3.3-70b-versatile",
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: "groq-key",
+    });
+
+    expect(resolveMainLLMConfig({
+      LLM_PROVIDER: "morpheus",
+      MORPHEUS_API_KEY: "mor-key",
+    })).toMatchObject({
+      provider: "morpheus",
+      model: "llama-3.3-70b",
+      baseUrl: "https://api.mor.org/api/v1",
+      apiKey: "mor-key",
+    });
+
+    expect(resolveMainLLMConfig({
+      LLM_PROVIDER: "kimi",
+      KIMI_API_KEY: "kimi-key",
+    })).toMatchObject({
+      provider: "kimi",
+      model: "kimi-k2.6",
+      baseUrl: "https://api.moonshot.ai/v1",
+      apiKey: "kimi-key",
+    });
+
+    expect(resolveMainLLMConfig({
+      LLM_PROVIDER: "docker-model-runner",
+    })).toMatchObject({
+      provider: "docker-model-runner",
+      model: "ai/smollm2",
+      baseUrl: "http://localhost:12434/engines/v1",
+    });
   });
 
   it("uses the saved desktop model choice for local-first Ollama", () => {
@@ -100,6 +139,72 @@ describe("LLM config", () => {
       fileModel: "claude-haiku-4-5",
     });
     expect(JSON.stringify(status)).not.toContain("secret");
+  });
+
+  it("resolves per-task role providers from env and user prefs", () => {
+    const env = {
+      LLM_PROVIDER: "ollama",
+      LLM_MODEL: "llama3.2",
+      LLM_BASE_URL: "http://127.0.0.1:11434",
+      LLM_REVIEW_PROVIDER: "anthropic",
+      LLM_REVIEW_MODEL: "claude-sonnet-4-20250514",
+      ANTHROPIC_API_KEY: "sk-ant",
+      LLM_REVISE_PROVIDER: "openai",
+      LLM_REVISE_MODEL: "gpt-4o",
+      OPENAI_API_KEY: "sk-openai",
+    };
+
+    expect(resolveRoleLLMConfig("write", env)).toMatchObject({
+      provider: "ollama",
+      model: "llama3.2",
+    });
+    expect(resolveRoleLLMConfig("review", env)).toMatchObject({
+      provider: "anthropic",
+      model: "claude-sonnet-4-20250514",
+      apiKey: "sk-ant",
+    });
+    expect(resolveRoleLLMConfig("revise", env)).toMatchObject({
+      provider: "openai",
+      model: "gpt-4o",
+      apiKey: "sk-openai",
+    });
+
+    const prefsEnv = {
+      LLM_PROVIDER: "ollama",
+      LLM_MODEL: "llama3.2",
+      LLM_BASE_URL: "http://127.0.0.1:11434",
+      GEMINI_API_KEY: "gem-key",
+    };
+    expect(
+      resolveRoleLLMConfig("review", prefsEnv, {
+        review: { provider: "gemini", model: "gemini-2.5-pro" },
+      }),
+    ).toMatchObject({
+      provider: "gemini",
+      model: "gemini-2.5-pro",
+      apiKey: "gem-key",
+    });
+  });
+
+  it("reports role-specific status and available providers", () => {
+    const status = publicLLMStatus(
+      {
+        LLM_PROVIDER: "ollama",
+        LLM_MODEL: "llama3.2",
+        LLM_BASE_URL: "http://127.0.0.1:11434",
+        ANTHROPIC_API_KEY: "sk-ant",
+        LLM_REVIEW_PROVIDER: "anthropic",
+        LLM_REVIEW_MODEL: "claude-haiku-4-5",
+      },
+      { revise: { provider: "anthropic", model: "claude-haiku-4-5" } },
+    );
+    expect(status.roles.write).toMatchObject({ provider: "ollama", model: "llama3.2", configured: true });
+    expect(status.roles.review).toMatchObject({ provider: "anthropic", model: "claude-haiku-4-5", configured: true });
+    expect(status.roles.revise).toMatchObject({ provider: "anthropic", model: "claude-haiku-4-5", configured: true });
+    expect(status.availableProviders.map((p: { id: string }) => p.id)).toContain("ollama");
+    expect(status.availableProviders.map((p: { id: string }) => p.id)).toContain("anthropic");
+    expect(status.availableProviders.map((p: { id: string }) => p.id)).toContain("groq");
+    expect(status.availableProviders.map((p: { id: string }) => p.id)).toContain("docker-model-runner");
   });
 
   it("reports local-first status before an Ollama model is selected", () => {
@@ -285,6 +390,41 @@ describe("provider adapters", () => {
 });
 
 describe("provider-neutral AI wrapper", () => {
+  it("runs a role-specific model picker smoke test with the selected provider", async () => {
+    const res = await runLLMConnectionTest(
+      { role: "review", provider: "groq", model: "llama-3.3-70b-versatile", apiKey: "ui-groq-key" },
+      {
+        env: {
+          LLM_PROVIDER: "ollama",
+          LLM_MODEL: "llama3.2",
+          LLM_BASE_URL: "http://127.0.0.1:11434",
+        },
+        timeoutMs: 1000,
+        aiFactory: (config, role, prefs) => {
+          expect(role).toBe("review");
+          expect(prefs?.review).toMatchObject({ provider: "groq", model: "llama-3.3-70b-versatile", apiKey: "ui-groq-key" });
+          expect(config.apiKey).toBe("ui-groq-key");
+          expect(config.maxTokens).toBe(256);
+          return {
+            complete: async () => "JACK_SCRIPT_MODEL_TEST_OK",
+            json: async <T = unknown>() => ({}) as T,
+            text: async () => "JACK_SCRIPT_MODEL_TEST_OK",
+            extractJSON: () => null,
+            repairJSON: () => null,
+          };
+        },
+      },
+    );
+
+    expect(res).toMatchObject({
+      ok: true,
+      role: "review",
+      provider: "groq",
+      model: "llama-3.3-70b-versatile",
+      reply: "JACK_SCRIPT_MODEL_TEST_OK",
+    });
+  });
+
   it("uses the JSON repair round-trip and preserves the system preamble shaping", async () => {
     const calls: Array<{ role: string; content: string }[]> = [];
     const adapter: LLMAdapter = {

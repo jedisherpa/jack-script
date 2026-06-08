@@ -3,6 +3,7 @@
  * Regex-first extractor; optional LLM polish via craftVoiceScript.
  */
 import { craftVoiceScript } from "@/lib/ai/voiceScript";
+import type { AI } from "@/lib/llm";
 
 const SLUG_RE = /^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|EST\.)/i;
 const CHARACTER_RE = /^[A-Z][A-Z0-9 .'\-()]{0,30}$/;
@@ -60,16 +61,20 @@ export async function draftProductionVoiceScript(input: {
   refContext?: string;
   voiceName?: string;
   useLlm?: boolean;
+  client?: AI;
 }): Promise<string> {
   const base = extractScreenplayVoiceScript(input.text, input.title);
   if (!input.useLlm || !base.trim()) return base;
 
   try {
-    const polished = await craftVoiceScript({
-      article: { title: input.title, text: base },
-      refContext: input.refContext,
-      voiceName: input.voiceName,
-    });
+    const polished = await craftVoiceScript(
+      {
+        article: { title: input.title, text: base },
+        refContext: input.refContext,
+        voiceName: input.voiceName,
+      },
+      input.client,
+    );
     return polished || base;
   } catch {
     return base;

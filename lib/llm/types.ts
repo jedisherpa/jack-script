@@ -1,4 +1,27 @@
-export type LLMProvider = "anthropic" | "openai" | "openai-compatible" | "xai" | "ollama" | "gemini";
+export type LLMProvider =
+  | "anthropic"
+  | "openai"
+  | "openai-compatible"
+  | "xai"
+  | "grok"
+  | "groq"
+  | "ollama"
+  | "docker-model-runner"
+  | "gemini"
+  | "morpheus"
+  | "kimi";
+
+/** Task-specific LLM routing — write, review (coverage), revise (rewrite pass). */
+export type LLMRole = "write" | "review" | "revise";
+
+export interface LLMRoleSelection {
+  provider?: LLMProvider;
+  model?: string;
+  baseUrl?: string;
+  apiKey?: string;
+}
+
+export type LLMRolesPrefs = Partial<Record<LLMRole, LLMRoleSelection>>;
 
 export interface LLMCapabilities {
   text: boolean;

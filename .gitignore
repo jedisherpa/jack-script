@@ -13,3 +13,10 @@ coverage/
 .drizzle/
 *.tsbuildinfo
 .local-data/
+*.p8
+*.p12
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile

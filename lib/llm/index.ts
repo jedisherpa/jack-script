@@ -6,12 +6,22 @@ import {
   resolveAnthropicFileFallback,
   resolveFileLLMConfig,
   resolveMainLLMConfig,
+  resolveRoleLLMConfig,
 } from "@/lib/llm/config";
 import { anthropicProvider } from "@/lib/llm/providers/anthropic";
 import { geminiProvider } from "@/lib/llm/providers/gemini";
 import { openAICompatibleProvider } from "@/lib/llm/providers/openaiCompatible";
 import { ollamaProvider } from "@/lib/llm/providers/ollama";
-import type { AI, AIMessage, AIOptions, LLMAdapter, LLMConfig, MultimodalContentBlock } from "@/lib/llm/types";
+import type {
+  AI,
+  AIMessage,
+  AIOptions,
+  LLMAdapter,
+  LLMConfig,
+  LLMRole,
+  LLMRolesPrefs,
+  MultimodalContentBlock,
+} from "@/lib/llm/types";
 
 export type {
   AI,
@@ -21,19 +31,42 @@ export type {
   LLMAdapter,
   LLMConfig,
   LLMProvider,
+  LLMRole,
+  LLMRoleSelection,
+  LLMRolesPrefs,
   MultimodalContentBlock,
 } from "@/lib/llm/types";
 export { LLMError } from "@/lib/llm/errors";
 export { extractJSON, repairJSON } from "@/lib/llm/json";
-export { publicLLMStatus, resolveMainLLMConfig, resolveFileLLMConfig } from "@/lib/llm/config";
+export {
+  listAvailableProviders,
+  publicLLMStatus,
+  resolveMainLLMConfig,
+  resolveFileLLMConfig,
+  resolveRoleLLMConfig,
+} from "@/lib/llm/config";
+export { loadUserLlmRoles } from "@/lib/llm/userPrefs";
 
 function createAdapter(config: LLMConfig): LLMAdapter {
   if (config.provider === "anthropic") return anthropicProvider(config);
   if (config.provider === "gemini") return geminiProvider(config);
-  if (config.provider === "openai" || config.provider === "openai-compatible" || config.provider === "xai") {
+  if (
+    config.provider === "openai" ||
+    config.provider === "openai-compatible" ||
+    config.provider === "xai" ||
+    config.provider === "grok" ||
+    config.provider === "groq" ||
+    config.provider === "docker-model-runner" ||
+    config.provider === "morpheus" ||
+    config.provider === "kimi"
+  ) {
     return openAICompatibleProvider(config);
   }
   return ollamaProvider(config);
+}
+
+export function createAIFromConfig(config: LLMConfig): AI {
+  return createAI(createAdapter(config));
 }
 
 function withSystemPreamble(messages: AIMessage[], system?: string): AIMessage[] {
@@ -72,17 +105,38 @@ export function createAI(adapter: LLMAdapter): AI {
   return { complete, json, text, extractJSON, repairJSON };
 }
 
-let mainAdapter: LLMAdapter | null = null;
-let mainAI: AI | null = null;
+const roleAICache = new Map<string, AI>();
 
-function getMainAdapter(): LLMAdapter {
-  if (!mainAdapter) mainAdapter = createAdapter(resolveMainLLMConfig());
-  return mainAdapter;
+function roleCacheKey(role: LLMRole, config: LLMConfig): string {
+  const keyMarker = config.apiKey ? `key:${config.apiKey.length}:${config.apiKey.slice(-4)}` : "no-key";
+  return `${role}:${config.provider}:${config.model}:${config.baseUrl || ""}:${keyMarker}`;
 }
 
+/** Task-specific AI client. Uses settings.prefs.llmRoles when provided. */
+export function getAIForRole(role: LLMRole, rolePrefs?: LLMRolesPrefs): AI {
+  const config = resolveRoleLLMConfig(role, process.env, rolePrefs);
+  const key = roleCacheKey(role, config);
+  let cached = roleAICache.get(key);
+  if (!cached) {
+    cached = createAI(createAdapter(config));
+    roleAICache.set(key, cached);
+  }
+  return cached;
+}
+
+/** Load user prefs and return the AI client for a task role. */
+export async function getUserAI(
+  role: LLMRole,
+  user: { id: string; workspaceId?: string },
+): Promise<AI> {
+  const { loadUserLlmRoles } = await import("@/lib/llm/userPrefs");
+  const prefs = await loadUserLlmRoles(user.id, user.workspaceId);
+  return getAIForRole(role, prefs);
+}
+
+/** @deprecated Prefer getAIForRole("write") — kept for backward compatibility. */
 export function getAI(): AI {
-  if (!mainAI) mainAI = createAI(getMainAdapter());
-  return mainAI;
+  return getAIForRole("write");
 }
 
 export function getFileAI(required: "vision" | "pdf"): LLMAdapter {
@@ -114,19 +168,18 @@ export async function completeBlocks(content: MultimodalContentBlock[], system?:
 }
 
 export function resetLLMForTests() {
-  mainAdapter = null;
-  mainAI = null;
+  roleAICache.clear();
 }
 
 export const ai: AI = {
   complete(messages, system) {
-    return getAI().complete(messages, system);
+    return getAIForRole("write").complete(messages, system);
   },
   json(prompt, opts) {
-    return getAI().json(prompt, opts);
+    return getAIForRole("write").json(prompt, opts);
   },
   text(prompt, opts) {
-    return getAI().text(prompt, opts);
+    return getAIForRole("write").text(prompt, opts);
   },
   extractJSON,
   repairJSON,

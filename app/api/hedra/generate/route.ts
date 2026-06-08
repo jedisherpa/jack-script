@@ -18,6 +18,7 @@ import { textToSpeechLong } from "@/lib/elevenlabs";
 import { uploadPublicAudio } from "@/lib/storage";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { craftImagePrompt } from "@/lib/ai/imagePrompt";
+import { getUserAI } from "@/lib/llm";
 import { generateBodySchema, validateAgainstModel, sanitizeText } from "@/lib/validation";
 import { toErrorResponse } from "@/lib/errors";
 
@@ -192,12 +193,16 @@ export async function POST(req: Request) {
           : await db.query.pieces.findFirst({ where: eq(pieces.id, body.pieceId) });
         if (pc) article = { title: pc.title, excerpt: pieceExcerpt(pc) };
       }
-      const enhanced = await craftImagePrompt({
-        seed: sanitizeText(body.prompt, 2000),
-        styleDirective: prof?.directive || "",
-        refContext: refCtx,
-        article,
-      });
+      const writeAI = await getUserAI("write", user);
+      const enhanced = await craftImagePrompt(
+        {
+          seed: sanitizeText(body.prompt, 2000),
+          styleDirective: prof?.directive || "",
+          refContext: refCtx,
+          article,
+        },
+        writeAI,
+      );
       input.textPrompt = enhanced || input.textPrompt;
       meta.enhancedPrompt = enhanced;
     } else if (prof?.directive && !body.directed) {

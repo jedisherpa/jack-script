@@ -176,16 +176,45 @@ function DesktopOnboarding() {
   const [open, setOpen] = React.useState(false);
   const [status, setStatus] = React.useState(null);
   const [models, setModels] = React.useState([]);
-  const [model, setModel] = React.useState("llama3.2");
+  const [roles, setRoles] = React.useState({
+    write: { provider: "ollama", model: "llama3.2" },
+    review: { provider: "ollama", model: "llama3.2" },
+    revise: { provider: "ollama", model: "llama3.2" },
+  });
+  const [tests, setTests] = React.useState({});
+  const [providerModels, setProviderModels] = React.useState({});
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState("");
 
-  const desktop = window.KINGS_DESKTOP;
+  const desktop = window.JACK_DESKTOP || window.KINGS_DESKTOP;
+  const providerOptions = [
+    { id: "anthropic", label: "Anthropic", defaultModel: "claude-haiku-4-5" },
+    { id: "xai", label: "xAI", defaultModel: "grok-3-mini", baseUrl: "https://api.x.ai/v1" },
+    { id: "grok", label: "Grok (xAI)", defaultModel: "grok-3-mini", baseUrl: "https://api.x.ai/v1" },
+    { id: "groq", label: "Groq", defaultModel: "llama-3.3-70b-versatile" },
+    { id: "gemini", label: "Google Gemini", defaultModel: "gemini-2.5-flash" },
+    { id: "ollama", label: "Ollama (local)", defaultModel: "llama3.2", baseUrl: "http://127.0.0.1:11434" },
+    { id: "docker-model-runner", label: "Docker Model Runner", defaultModel: "ai/smollm2", baseUrl: "http://localhost:12434/engines/v1" },
+    { id: "morpheus", label: "Morpheus", defaultModel: "llama-3.3-70b", baseUrl: "https://api.mor.org/api/v1" },
+    { id: "kimi", label: "Kimi / Kimmy (Moonshot)", defaultModel: "kimi-k2.6", baseUrl: "https://api.moonshot.ai/v1" },
+    { id: "openai", label: "OpenAI", defaultModel: "gpt-4o-mini" },
+    { id: "openai-compatible", label: "OpenAI-compatible", defaultModel: "" },
+  ];
+  const keylessProviders = new Set(["ollama", "docker-model-runner"]);
+  const requiresApiKey = (provider) => provider && !keylessProviders.has(provider);
+  const showsBaseUrl = (provider) => ["docker-model-runner", "openai-compatible", "xai", "grok", "morpheus", "kimi"].includes(provider);
   const modelOptions = ["llama3.2", "mistral", "qwen2.5:7b", "gemma3:4b"];
+  const roleMeta = {
+    write: { title: "Write", blurb: "Drafting, polish, voice scripts, artifacts" },
+    review: { title: "Review", blurb: "Seven screenplay coverage gates" },
+    revise: { title: "Revise", blurb: "Dialogue, tone, and structural passes" },
+  };
 
   React.useEffect(() => {
     if (!desktop || !desktop.isDesktop()) return;
-    const done = window.localStorage.getItem("kingspress.desktopSetupComplete") === "true";
+    const done =
+      window.localStorage.getItem("jackscript.desktopSetupComplete") === "true" ||
+      window.localStorage.getItem("kingspress.desktopSetupComplete") === "true";
     setOpen(!done);
     refresh();
 
@@ -217,18 +246,78 @@ function DesktopOnboarding() {
       ]);
       setStatus(s);
       setModels(list || []);
-      if (saved && saved.model) setModel(saved.model);
-      else if (list && list.length) setModel(list[0]);
+      const savedRoles = (saved && saved.roles) || null;
+      if (savedRoles && typeof savedRoles === "object") {
+        setRoles((prev) => {
+          const next = Object.assign({}, prev);
+          ["write", "review", "revise"].forEach((role) => {
+            next[role] = Object.assign({}, prev[role], savedRoles[role] || {});
+          });
+          return next;
+        });
+      } else if (saved && saved.model) {
+        setRoles({
+          write: { provider: saved.provider || "ollama", model: saved.model },
+          review: { provider: saved.provider || "ollama", model: saved.model },
+          revise: { provider: saved.provider || "ollama", model: saved.model },
+        });
+      } else if (list && list.length) {
+        setRoles({
+          write: { provider: "ollama", model: list[0] },
+          review: { provider: "ollama", model: list[0] },
+          revise: { provider: "ollama", model: list[0] },
+        });
+      }
     } catch (e) {
       setMessage((e && e.message) || "Desktop setup check failed.");
     }
   };
 
-  const pullModel = async () => {
-    if (!model.trim()) return;
-    setBusy(true); setMessage("Downloading " + model + ". This can take a while.");
+  const setRole = (role, patch) => {
+    setRoles((prev) => Object.assign({}, prev, { [role]: Object.assign({}, prev[role], patch) }));
+  };
+
+  const loadProviderModels = async (role, provider, baseUrl) => {
+    if (provider !== "docker-model-runner") return;
     try {
-      await desktop.pullOllamaModel(model.trim());
+      const r = await fetch(`/api/llm/models?provider=docker-model-runner&baseUrl=${encodeURIComponent(baseUrl || "http://localhost:12434/engines/v1")}`, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      const data = await r.json().catch(() => ({}));
+      const list = Array.isArray(data.models) ? data.models : [];
+      if (!list.length) return;
+      setProviderModels((prev) => Object.assign({}, prev, { [role]: list }));
+      setRoles((prev) => {
+        const row = prev[role] || {};
+        if (list.includes(row.model)) return prev;
+        return Object.assign({}, prev, { [role]: Object.assign({}, row, { model: list[0] }) });
+      });
+    } catch (_) {}
+  };
+
+  const onProviderChange = (role, provider) => {
+    const meta = providerOptions.find((p) => p.id === provider);
+    const baseUrl = meta && meta.baseUrl;
+    setRole(role, {
+      provider,
+      model: (meta && meta.defaultModel) || roles[role].model || "",
+      baseUrl,
+      apiKey: roles[role] && roles[role].apiKey,
+    });
+    loadProviderModels(role, provider, baseUrl);
+  };
+
+  const primaryOllamaModel = (() => {
+    const found = ["write", "review", "revise"].map((role) => roles[role]).find((row) => row.provider === "ollama" && row.model);
+    return (found && found.model) || "llama3.2";
+  })();
+
+  const pullModel = async () => {
+    if (!primaryOllamaModel.trim()) return;
+    setBusy(true); setMessage("Downloading " + primaryOllamaModel + ". This can take a while.");
+    try {
+      await desktop.pullOllamaModel(primaryOllamaModel.trim());
       await refresh();
       setMessage("Model is ready.");
     } catch (e) {
@@ -251,28 +340,90 @@ function DesktopOnboarding() {
 
   const finish = async () => {
     setBusy(true);
+    const payload = {};
+    ["write", "review", "revise"].forEach((role) => {
+      const row = roles[role] || {};
+      payload[role] = {
+        provider: row.provider || "ollama",
+        model: (row.model || "").trim() || undefined,
+        baseUrl: row.baseUrl || (providerOptions.find((p) => p.id === row.provider) || {}).baseUrl,
+        apiKey: (row.apiKey || "").trim() || undefined,
+      };
+    });
     try {
-      await desktop.saveModelChoice(model.trim());
-      window.localStorage.setItem("kingspress.desktopSetupComplete", "true");
+      if (desktop.saveAiRoles) await desktop.saveAiRoles(payload);
+      else await desktop.saveModelChoice((payload.write && payload.write.model) || "llama3.2");
+      if (window.Store && window.Store.setLlmRoles) {
+        const publicPayload = {};
+        ["write", "review", "revise"].forEach((role) => {
+          const row = payload[role] || {};
+          publicPayload[role] = { provider: row.provider, model: row.model, baseUrl: row.baseUrl };
+        });
+        window.Store.setLlmRoles(publicPayload);
+      }
+      window.localStorage.setItem("jackscript.desktopSetupComplete", "true");
       setOpen(false);
     } catch (e) {
-      setMessage((e && e.message) || "Could not save the model choice.");
+      if (window.Store && window.Store.setLlmRoles) {
+        const publicPayload = {};
+        ["write", "review", "revise"].forEach((role) => {
+          const row = payload[role] || {};
+          publicPayload[role] = { provider: row.provider, model: row.model, baseUrl: row.baseUrl };
+        });
+        window.Store.setLlmRoles(publicPayload);
+      }
+      window.localStorage.setItem("jackscript.desktopSetupComplete", "true");
+      setOpen(false);
+      console.warn("[DesktopSetup] Could not save provider choices:", e);
     }
     setBusy(false);
+  };
+
+  const testRole = async (role) => {
+    const row = roles[role] || {};
+    const payload = {
+      role,
+      provider: row.provider || undefined,
+      model: (row.model || "").trim() || undefined,
+      baseUrl: row.baseUrl || (providerOptions.find((p) => p.id === row.provider) || {}).baseUrl,
+      apiKey: (row.apiKey || "").trim() || undefined,
+    };
+    setTests((prev) => Object.assign({}, prev, { [role]: { busy: true, ok: false, message: "Testing model..." } }));
+    try {
+      const r = await fetch("/api/llm/test", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || "Model test failed.");
+      setTests((prev) => Object.assign({}, prev, {
+        [role]: {
+          busy: false,
+          ok: true,
+          message: `${data.provider}${data.model ? " · " + data.model : ""} replied in ${data.elapsedMs}ms: ${data.reply || "OK"}`,
+        },
+      }));
+    } catch (e) {
+      setTests((prev) => Object.assign({}, prev, {
+        [role]: { busy: false, ok: false, message: (e && e.message) || "Model test failed." },
+      }));
+    }
   };
 
   if (!open) return null;
   const installed = !!(status && status.installed);
   const running = !!(status && status.running);
-  const hasModel = models.includes(model);
+  const hasModel = models.includes(primaryOllamaModel);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "oklch(0 0 0 / 0.28)", display: "grid", placeItems: "center", padding: 24 }}>
-      <div className="card" style={{ width: "min(620px, 100%)", padding: "24px 26px", boxShadow: "var(--shadow-lg)" }}>
+      <div className="card" style={{ width: "min(760px, 100%)", padding: "24px 26px", boxShadow: "var(--shadow-lg)" }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>Jack Script desktop setup</div>
-        <h2 style={{ fontSize: 30, marginBottom: 10 }}>Choose your local writing model</h2>
+        <h2 style={{ fontSize: 30, marginBottom: 10 }}>Choose AI providers</h2>
         <p className="muted" style={{ fontSize: 15.5, lineHeight: 1.55 }}>
-          Jack Script works best with a local Ollama model. The desktop app keeps your scripts, bibles, and assets in a local data folder and uses your selected model for sovereign, offline-capable screenwriting.
+          Assign models for writing, coverage review, and revision. API keys stay server-side; desktop keys save only to the local desktop settings file.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18 }}>
           <div className="card" style={{ padding: 12, borderRadius: "var(--radius)" }}>
@@ -284,23 +435,81 @@ function DesktopOnboarding() {
             <div style={{ fontSize: 15 }}>{models.length ? models.join(", ") : "None found yet"}</div>
           </div>
         </div>
-        {!installed && (
-          <p style={{ marginTop: 14, fontSize: 14.5 }}>
-            Install Ollama from <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">ollama.com/download</a>, then reopen this setup. The packaged installer will use this same check during first run.
-          </p>
-        )}
+        {!installed && <p style={{ marginTop: 14, fontSize: 14.5 }}>Ollama is optional. Use cloud providers with env keys, or install Ollama from <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">ollama.com/download</a>.</p>}
         {installed && !running && (
           <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <p style={{ margin: 0, fontSize: 14.5 }}>Ollama is installed but not running.</p>
             <button className="btn" disabled={busy} onClick={startOllama}><Icon name="play" size={14} /> Start Ollama</button>
           </div>
         )}
-        <label className="eyebrow" style={{ display: "block", marginTop: 18, marginBottom: 6 }}>Model</label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
-          <input className="field" value={model} onChange={(e) => setModel(e.target.value)} list="desktop-model-options" placeholder="llama3.2" />
-          <datalist id="desktop-model-options">{modelOptions.map((m) => <option key={m} value={m} />)}</datalist>
-          <button className="btn" disabled={busy || !installed || !running || hasModel} onClick={pullModel}><Icon name="doc" size={14} /> Pull</button>
-          <button className="btn primary" disabled={busy || !model.trim()} onClick={finish}>Use model</button>
+
+        <div style={{ display: "grid", gap: 10, marginTop: 18 }}>
+          {["write", "review", "revise"].map((role) => {
+            const meta = roleMeta[role];
+            const row = roles[role] || {};
+            const test = tests[role] || {};
+            const provider = row.provider || "ollama";
+            return (
+              <div key={role} className="card" style={{ padding: "12px 14px", borderRadius: "var(--radius)" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 180px minmax(0, 1fr) auto", gap: 10, alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>{meta.title}</div>
+                    <div className="muted" style={{ fontSize: 12.5 }}>{meta.blurb}</div>
+                  </div>
+                  <select className="field" value={row.provider || "ollama"} disabled={busy}
+                    onChange={(e) => onProviderChange(role, e.target.value)}>
+                    {providerOptions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                  <input className="field" value={row.model || ""} disabled={busy} list={`desktop-model-options-${role}`}
+                    placeholder={(providerOptions.find((p) => p.id === row.provider) || {}).defaultModel || "model name"}
+                    onChange={(e) => setRole(role, { model: e.target.value })} />
+                  <button className="btn" disabled={busy || test.busy} onClick={() => testRole(role)} title={`Test ${meta.title} model`}>
+                    {test.busy ? <Spinner size={14} /> : <Icon name="sparkle" size={14} />} Test
+                  </button>
+                </div>
+                <datalist id={`desktop-model-options-${role}`}>
+                  {modelOptions.concat(providerModels[role] || []).map((m) => <option key={m} value={m} />)}
+                </datalist>
+                {(requiresApiKey(provider) || showsBaseUrl(provider)) && (
+                  <div style={{ display: "grid", gridTemplateColumns: requiresApiKey(provider) && showsBaseUrl(provider) ? "minmax(0, 1fr) minmax(0, 1fr)" : "minmax(0, 1fr)", gap: 10, marginTop: 10 }}>
+                    {requiresApiKey(provider) && (
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <span className="eyebrow">API key</span>
+                        <input className="field" type="password" value={row.apiKey || ""} disabled={busy}
+                          placeholder={provider === "grok" || provider === "xai" ? "XAI_API_KEY / GROK_API_KEY" : "Provider API key"}
+                          onChange={(e) => setRole(role, { apiKey: e.target.value })} />
+                      </label>
+                    )}
+                    {showsBaseUrl(provider) && (
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <span className="eyebrow">Base URL</span>
+                        <input className="field" value={row.baseUrl || (providerOptions.find((p) => p.id === provider) || {}).baseUrl || ""} disabled={busy}
+                          placeholder="https://.../v1"
+                          onChange={(e) => {
+                            setRole(role, { baseUrl: e.target.value });
+                            loadProviderModels(role, provider, e.target.value);
+                          }} />
+                      </label>
+                    )}
+                  </div>
+                )}
+                {test.message && (
+                  <div style={{ marginTop: 8, fontSize: 12.5, color: test.ok ? "var(--accent-ink)" : "var(--sev-must)" }}>
+                    {test.message}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="muted" style={{ fontSize: 13, marginTop: 12, lineHeight: 1.45 }}>
+          Providers: Anthropic, xAI, Gemini, Docker Model Runner, Ollama, Morpheus, Grok, Groq, and Kimi / Kimmy. Cloud providers require env keys such as <span className="mono">ANTHROPIC_API_KEY</span>, <span className="mono">XAI_API_KEY</span>, <span className="mono">GROQ_API_KEY</span>, <span className="mono">GEMINI_API_KEY</span>, <span className="mono">MORPHEUS_API_KEY</span>, or <span className="mono">KIMI_API_KEY</span>. Per-role env overrides still win.
+        </p>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
+          <button className="btn" disabled={busy || !installed || !running || hasModel} onClick={pullModel}><Icon name="doc" size={14} /> Pull {primaryOllamaModel}</button>
+          <button className="btn primary" disabled={busy} onClick={finish}><Icon name="sparkle" size={14} /> Save providers</button>
         </div>
         {message && <p style={{ marginTop: 12, color: "var(--accent-ink)", fontSize: 14 }}>{message}</p>}
       </div>
@@ -311,12 +520,13 @@ function DesktopOnboarding() {
 function App() {
   const state = useStore();
   const [view, setView] = React.useState("library");
+  const [llmOpen, setLlmOpen] = React.useState(false);
   const isMobile = window.useIsMobile();
   const role = state.role || "author";
 
   const campaigns = state.campaigns || [];
   const activeCampaign = campaigns.find((c) => c.id === state.activeCampaignId) || campaigns[0];
-  const refs = (activeCampaign && activeCampaign.references) || {};
+  const refs = window.Store.activeReferences ? window.Store.activeReferences() : ((activeCampaign && activeCampaign.references) || {});
   const refCtx = window.AI.refContext(refs);
   const campaignPieces = state.pieces.filter((p) => p.campaignId === state.activeCampaignId);
 
@@ -342,10 +552,15 @@ function App() {
         <CampaignSwitcher campaigns={campaigns} activeId={state.activeCampaignId}
           onSelect={(id) => window.Store.setActiveCampaign(id)} onAdd={(n) => window.Store.addCampaign(n)} />
         {!isMobile && <RoleSwitch role={role} onChange={(r) => window.Store.setRole(r)} />}
+        <button className="icon-btn" onClick={() => setLlmOpen(true)} title="AI providers (write / review / revise)">
+          <Icon name="sparkle" size={16} />
+        </button>
         <button className="icon-btn" onClick={() => window.Store.toggleTheme()} title="Toggle light / dark">
           <Icon name={state.theme === "dark" ? "sun" : "moon"} size={16} />
         </button>
       </div>
+
+      <LlmSettingsModal open={llmOpen} onClose={() => setLlmOpen(false)} />
 
       {view === "references" && <References refs={refs} role={role} campaignName={activeCampaign && activeCampaign.name} />}
       {view === "studio" && (

@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { db, campaigns, pieces, references } from "@/lib/db";
 import { getLocalPiece, getLocalReferences, updateLocalPiece } from "@/lib/local/database";
 import { isLocalFirstMode } from "@/lib/local/mode";
-import { ai } from "@/lib/llm";
+import { getUserAI } from "@/lib/llm";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { generateRevision, type RevisionPacket, type RevisionPieceInput } from "@/lib/revision";
 import { toErrorResponse } from "@/lib/errors";
@@ -80,7 +80,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       direction: piece.direction ?? null,
     };
 
-    const result = await generateRevision(input, refCtx, ai, undefined, { mode });
+    const reviseAI = await getUserAI("revise", user);
+    const result = await generateRevision(input, refCtx, reviseAI, undefined, { mode });
 
     if (isLocalFirstMode()) {
       const updated = updateLocalPiece(

@@ -1,10 +1,9 @@
-# King’s Press Editorial Desk — local-first desktop architecture
+# Jack Script — local-first desktop architecture
 
-This repo contains the local-first Tauri desktop build of the former Pillar
-Press web stack.
+This repo contains the local-first Tauri desktop build of Jack Script.
 
 ## Desktop runtime
-- App name: **King’s Press Editorial Desk**.
+- App name: **Jack Script**.
 - Tauri package: `src-tauri/`.
 - Desktop scripts:
   - `npm run desktop:dev`
@@ -12,7 +11,8 @@ Press web stack.
   - `npm run desktop:prepare-sidecar`
 - `npm run desktop:dev` starts the local web runtime through `npm run desktop:web`,
   which sets:
-  - `KINGS_PRESS_LOCAL_FIRST=true`
+  - `JACK_SCRIPT_LOCAL_FIRST=true`
+  - `KINGS_PRESS_LOCAL_FIRST=true` for migration compatibility
   - `STORAGE_PROVIDER=local`
 - `npm run desktop:build` runs a Next standalone build and copies the packaged
   server runtime into `src-tauri/resources/desktop-server`. The production Tauri
@@ -27,8 +27,9 @@ Press web stack.
   `KINGS_PRESS_LLM_SETTINGS_PATH`; local-first mode defaults to
   `LLM_PROVIDER=ollama` when no explicit cloud provider is configured.
 - Optional cloud providers are still supported through the same server-side LLM
-  interface: Anthropic, OpenAI/ChatGPT API, xAI/Grok, Gemini, and generic
-  OpenAI-compatible endpoints. These are opt-in overrides, not desktop defaults.
+  interface: Anthropic, OpenAI/ChatGPT API, xAI/Grok, Groq, Gemini, Docker
+  Model Runner, Morpheus, Kimi/Moonshot, and generic OpenAI-compatible
+  endpoints. These are opt-in overrides, not desktop defaults.
 - The native desktop menu exposes normal-user setup actions:
   - **Set Up Local Model...** reopens first-run model setup.
   - **Start Ollama** starts the local Ollama service when it is installed but
@@ -46,11 +47,13 @@ Press web stack.
 - Initial schema: `db/local-sqlite-schema.sql`.
 - The schema includes local replacements for campaigns, references, pieces, learned style profiles/feedback, media jobs, settings, Gather sources/items, and `gather_schedules`.
 - Server-side local database runtime: `lib/local/database.ts`.
-- The runtime creates the local owner, workspace, membership, and 11 default campaigns using the shared seed data in `lib/seed-data.ts`.
+- The runtime creates the local owner, workspace, membership, and default
+  Jack Script projects using the shared seed data in `lib/seed-data.ts`.
 - Override paths for development or backup testing:
-  - `KINGS_PRESS_DATA_DIR=/path/to/app-data`
-  - `KINGS_PRESS_DB_PATH=/path/to/kings-press.sqlite3`
-- Backups are local folders named `kings-press-backup-<timestamp>`. The SQLite
+  - `JACK_SCRIPT_DATA_DIR=/path/to/app-data`
+  - `JACK_SCRIPT_DB_PATH=/path/to/jack-script.sqlite3`
+  - legacy `KINGS_PRESS_*` path overrides are still honored.
+- Backups are local folders named `jack-script-backup-<timestamp>`. The SQLite
   copy is created with SQLite `VACUUM INTO` so the backup is consistent while
   the app is running.
 
@@ -102,12 +105,12 @@ npm run desktop:verify-release
 ```
 
 The verifier checks that the macOS app and DMG exist, the bundle metadata uses
-the King’s Press name/id/version, the packaged Next server and bundled Node
+the Jack Script name/id/version, the packaged Next server and bundled Node
 runtime are present, no `.env` files are bundled, macOS codesigning verifies, the
 DMG passes `hdiutil imageinfo`, the DMG mounts with the app payload plus
 `/Applications` shortcut, and the packaged server can boot from a minimal
 environment with a fresh local SQLite data directory, serve the UI, report LLM
-status, seed 11 campaigns, and run the Gather scheduler endpoint.
+status, seed projects, and run the Gather scheduler endpoint.
 
 For public macOS release builds, configure Developer ID signing and Apple
 notarization credentials, then run:

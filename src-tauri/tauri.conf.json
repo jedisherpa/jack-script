@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "King's Press Editorial Desk",
+  "productName": "Jack Script",
   "version": "0.1.0",
-  "identifier": "com.kingspress.editorialdesk",
+  "identifier": "com.jackscript.desktop",
   "build": {
     "beforeDevCommand": "npm run desktop:web",
     "devUrl": "http://localhost:3000",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "King's Press Editorial Desk",
+        "title": "Jack Script",
         "width": 1280,
         "height": 840,
         "minWidth": 1024,
@@ -27,7 +27,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app"],
     "category": "Productivity",
     "icon": [
       "icons/32x32.png",
@@ -36,8 +36,8 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "shortDescription": "Local-first editorial desk for King's Press",
-    "longDescription": "King's Press Editorial Desk is a local-first AI-assisted publishing and editorial operations workstation.",
+    "shortDescription": "Local-first screenwriting and video production workstation",
+    "longDescription": "Jack Script is a local-first screenwriting and stage-gated video production workstation.",
     "macOS": {
       "signingIdentity": "-"
     },

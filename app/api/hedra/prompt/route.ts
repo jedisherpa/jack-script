@@ -8,6 +8,7 @@ import { getLocalPiece, getLocalReferences, getLocalStyleProfile } from "@/lib/l
 import { isLocalFirstMode } from "@/lib/local/mode";
 import { buildRefContext, type ReferencesDoc } from "@/lib/refContext";
 import { craftImagePrompt } from "@/lib/ai/imagePrompt";
+import { getUserAI } from "@/lib/llm";
 import { sanitizeText } from "@/lib/validation";
 import { toErrorResponse } from "@/lib/errors";
 
@@ -54,12 +55,16 @@ export async function POST(req: Request) {
       if (pc) article = { title: pc.title, excerpt: pieceExcerpt(pc) };
     }
 
-    const prompt = await craftImagePrompt({
-      seed: sanitizeText(body.prompt, 2000),
-      styleDirective: directive,
-      refContext: refCtx,
-      article,
-    });
+    const writeAI = await getUserAI("write", user);
+    const prompt = await craftImagePrompt(
+      {
+        seed: sanitizeText(body.prompt, 2000),
+        styleDirective: directive,
+        refContext: refCtx,
+        article,
+      },
+      writeAI,
+    );
     return NextResponse.json({ prompt });
   } catch (err) {
     return toErrorResponse(err);

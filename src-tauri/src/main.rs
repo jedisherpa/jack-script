@@ -1,6 +1,7 @@
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     fs,
     path::PathBuf,
     process::{Child, Command},
@@ -37,12 +38,31 @@ struct OllamaStatus {
 }
 
 #[derive(Serialize, Deserialize)]
+struct DesktopRoleSelection {
+    #[serde(default)]
+    provider: Option<String>,
+    #[serde(default)]
+    model: Option<String>,
+    #[serde(default, rename = "baseUrl")]
+    base_url: Option<String>,
+    #[serde(default, rename = "apiKey")]
+    api_key: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
 struct DesktopSettings {
     #[serde(default)]
     provider: Option<String>,
+    #[serde(default = "default_model")]
     model: String,
     #[serde(default, rename = "baseUrl")]
     base_url: Option<String>,
+    #[serde(default)]
+    roles: HashMap<String, DesktopRoleSelection>,
+}
+
+fn default_model() -> String {
+    "llama3.2".into()
 }
 
 #[derive(Serialize)]
@@ -106,7 +126,7 @@ fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app_data_dir(app)?.join("kings-press.sqlite3"))
+    Ok(app_data_dir(app)?.join("jack-script.sqlite3"))
 }
 
 fn backups_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -130,7 +150,10 @@ fn init_database_at(path: &PathBuf) -> Result<(), String> {
 #[cfg(not(debug_assertions))]
 fn reserve_local_port() -> Result<u16, String> {
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
-    listener.local_addr().map(|addr| addr.port()).map_err(|e| e.to_string())
+    listener
+        .local_addr()
+        .map(|addr| addr.port())
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(not(debug_assertions))]
@@ -147,7 +170,11 @@ fn wait_for_server(port: u16) -> bool {
 fn bundled_node_path(app: &AppHandle) -> Option<PathBuf> {
     let resource_dir = app.path().resource_dir().ok()?;
     let bin_name = if cfg!(windows) { "node.exe" } else { "node" };
-    let candidate = resource_dir.join("node").join("bin").join(bin_name);
+    let candidate = resource_dir
+        .join("resources")
+        .join("node")
+        .join("bin")
+        .join(bin_name);
     candidate.exists().then_some(candidate)
 }
 
@@ -231,7 +258,11 @@ fn ollama_bin() -> PathBuf {
         }
     }
 
-    PathBuf::from(if cfg!(windows) { "ollama.exe" } else { "ollama" })
+    PathBuf::from(if cfg!(windows) {
+        "ollama.exe"
+    } else {
+        "ollama"
+    })
 }
 
 fn ollama_command() -> Command {
@@ -262,12 +293,12 @@ fn create_backup_at(app: &AppHandle) -> Result<PathBuf, String> {
         .duration_since(UNIX_EPOCH)
         .map_err(|e| e.to_string())?
         .as_secs();
-    let backup_dir = backups_dir(app)?.join(format!("kings-press-backup-{stamp}"));
+    let backup_dir = backups_dir(app)?.join(format!("jack-script-backup-{stamp}"));
     fs::create_dir_all(&backup_dir).map_err(|e| e.to_string())?;
 
     let db = database_path(app)?;
     if db.exists() {
-        let backup_db = backup_dir.join("kings-press.sqlite3");
+        let backup_db = backup_dir.join("jack-script.sqlite3");
         let conn = Connection::open(&db).map_err(|e| e.to_string())?;
         conn.execute("VACUUM INTO ?1", [backup_db.to_string_lossy().as_ref()])
             .map_err(|e| e.to_string())?;
@@ -283,9 +314,9 @@ fn create_backup_at(app: &AppHandle) -> Result<PathBuf, String> {
 
 fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let about = AboutMetadata {
-        name: Some("King's Press Editorial Desk".into()),
+        name: Some("Jack Script".into()),
         version: Some(env!("CARGO_PKG_VERSION").into()),
-        comments: Some("Local-first editorial operations desk for King's Press.".into()),
+        comments: Some("Local-first screenwriting and video production workstation.".into()),
         website: Some("https://ollama.com/download".into()),
         website_label: Some("Local model setup".into()),
         ..Default::default()
@@ -296,15 +327,39 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         &[
             &Submenu::with_items(
                 app,
-                "King's Press Editorial Desk",
+                "Jack Script",
                 true,
                 &[
-                    &PredefinedMenuItem::about(app, Some("About King's Press Editorial Desk"), Some(about))?,
+                    &PredefinedMenuItem::about(app, Some("About Jack Script"), Some(about))?,
                     &PredefinedMenuItem::separator(app)?,
-                    &MenuItem::with_id(app, MENU_SETUP_MODEL, "Set Up Local Model...", true, Some("CmdOrCtrl+,"))?,
-                    &MenuItem::with_id(app, MENU_OPEN_DATA_DIR, "Open Data Folder", true, Some("CmdOrCtrl+Shift+O"))?,
-                    &MenuItem::with_id(app, MENU_CREATE_BACKUP, "Create Local Backup", true, Some("CmdOrCtrl+Shift+B"))?,
-                    &MenuItem::with_id(app, MENU_OPEN_BACKUPS, "Open Backups Folder", true, None::<&str>)?,
+                    &MenuItem::with_id(
+                        app,
+                        MENU_SETUP_MODEL,
+                        "Set Up Local Model...",
+                        true,
+                        Some("CmdOrCtrl+,"),
+                    )?,
+                    &MenuItem::with_id(
+                        app,
+                        MENU_OPEN_DATA_DIR,
+                        "Open Data Folder",
+                        true,
+                        Some("CmdOrCtrl+Shift+O"),
+                    )?,
+                    &MenuItem::with_id(
+                        app,
+                        MENU_CREATE_BACKUP,
+                        "Create Local Backup",
+                        true,
+                        Some("CmdOrCtrl+Shift+B"),
+                    )?,
+                    &MenuItem::with_id(
+                        app,
+                        MENU_OPEN_BACKUPS,
+                        "Open Backups Folder",
+                        true,
+                        None::<&str>,
+                    )?,
                     &PredefinedMenuItem::separator(app)?,
                     &PredefinedMenuItem::hide(app, None)?,
                     &PredefinedMenuItem::hide_others(app, None)?,
@@ -352,8 +407,20 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
                 true,
                 &[
                     &MenuItem::with_id(app, MENU_START_OLLAMA, "Start Ollama", true, None::<&str>)?,
-                    &MenuItem::with_id(app, MENU_OPEN_OLLAMA_DOWNLOAD, "Install Ollama...", true, None::<&str>)?,
-                    &MenuItem::with_id(app, MENU_SETUP_MODEL, "Set Up Local Model...", true, None::<&str>)?,
+                    &MenuItem::with_id(
+                        app,
+                        MENU_OPEN_OLLAMA_DOWNLOAD,
+                        "Install Ollama...",
+                        true,
+                        None::<&str>,
+                    )?,
+                    &MenuItem::with_id(
+                        app,
+                        MENU_SETUP_MODEL,
+                        "Set Up Local Model...",
+                        true,
+                        None::<&str>,
+                    )?,
                 ],
             )?,
         ],
@@ -366,7 +433,7 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
             }
-            let _ = app.emit("kingspress:show-model-setup", ());
+            let _ = app.emit("jackscript:show-model-setup", ());
         }
         MENU_OPEN_DATA_DIR => {
             if let Ok(path) = app_data_dir(app) {
@@ -376,9 +443,12 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
         MENU_CREATE_BACKUP => {
             if let Ok(path) = create_backup_at(app) {
                 let _ = open_path(path.clone());
-                let _ = app.emit("kingspress:backup-created", BackupResult {
-                    path: path.to_string_lossy().to_string(),
-                });
+                let _ = app.emit(
+                    "jackscript:backup-created",
+                    BackupResult {
+                        path: path.to_string_lossy().to_string(),
+                    },
+                );
             }
         }
         MENU_OPEN_BACKUPS => {
@@ -391,7 +461,7 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
             }
-            let _ = app.emit("kingspress:show-model-setup", ());
+            let _ = app.emit("jackscript:show-model-setup", ());
         }
         MENU_OPEN_OLLAMA_DOWNLOAD => {
             let _ = open_url("https://ollama.com/download");
@@ -413,13 +483,21 @@ fn post_local_json(port: u16, path: &str) -> Result<String, String> {
         "POST {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nContent-Type: application/json\r\nAccept: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     );
-    stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    stream
+        .write_all(req.as_bytes())
+        .map_err(|e| e.to_string())?;
     let mut resp = String::new();
-    stream.read_to_string(&mut resp).map_err(|e| e.to_string())?;
+    stream
+        .read_to_string(&mut resp)
+        .map_err(|e| e.to_string())?;
     if resp.starts_with("HTTP/1.1 2") || resp.starts_with("HTTP/1.0 2") {
         Ok(resp)
     } else {
-        Err(resp.lines().next().unwrap_or("scheduler request failed").to_string())
+        Err(resp
+            .lines()
+            .next()
+            .unwrap_or("scheduler request failed")
+            .to_string())
     }
 }
 
@@ -470,7 +548,7 @@ fn start_packaged_server(app: &AppHandle) -> Result<Option<String>, String> {
         init_database_at(&db_path)?;
 
         let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
-        let server_dir = resource_dir.join("desktop-server");
+        let server_dir = resource_dir.join("resources").join("desktop-server");
         let server_entry = server_dir.join("server.js");
         if !server_entry.exists() {
             return Err(format!(
@@ -479,8 +557,9 @@ fn start_packaged_server(app: &AppHandle) -> Result<Option<String>, String> {
             ));
         }
 
-        let node_bin = std::env::var_os("KINGS_PRESS_NODE_BIN")
+        let node_bin = std::env::var_os("JACK_SCRIPT_NODE_BIN")
             .map(PathBuf::from)
+            .or_else(|| std::env::var_os("KINGS_PRESS_NODE_BIN").map(PathBuf::from))
             .or_else(|| bundled_node_path(app))
             .unwrap_or_else(|| PathBuf::from("node"));
         let mut command = Command::new(node_bin);
@@ -490,25 +569,35 @@ fn start_packaged_server(app: &AppHandle) -> Result<Option<String>, String> {
             .env("NODE_ENV", "production")
             .env("HOSTNAME", "127.0.0.1")
             .env("PORT", port.to_string())
+            .env("JACK_SCRIPT_LOCAL_FIRST", "true")
             .env("KINGS_PRESS_LOCAL_FIRST", "true")
             .env("DATA_BACKEND", "sqlite")
             .env("STORAGE_PROVIDER", "local")
             .env("KINGS_PRESS_STORAGE", "local")
+            .env("JACK_SCRIPT_DATA_DIR", &data_dir)
             .env("KINGS_PRESS_DATA_DIR", data_dir)
+            .env("JACK_SCRIPT_DB_PATH", &db_path)
             .env("KINGS_PRESS_DB_PATH", db_path)
+            .env("JACK_SCRIPT_STORAGE_DIR", &storage_path)
             .env("KINGS_PRESS_STORAGE_DIR", storage_path)
+            .env("JACK_SCRIPT_LLM_SETTINGS_PATH", &settings)
             .env("KINGS_PRESS_LLM_SETTINGS_PATH", settings)
             .env("LLM_BASE_URL", "http://127.0.0.1:11434")
+            .env("LLM_MODEL", "llama3.2")
             .stdout(Stdio::null())
             .stderr(Stdio::null());
 
-        if std::env::var_os("LLM_PROVIDER").is_none() && std::env::var_os("ANTHROPIC_API_KEY").is_none() {
+        if std::env::var_os("LLM_PROVIDER").is_none()
+            && std::env::var_os("ANTHROPIC_API_KEY").is_none()
+        {
             command.env("LLM_PROVIDER", "ollama");
         }
 
-        let child = command.spawn().map_err(|e| format!("Could not start local King’s Press server: {e}"))?;
+        let child = command
+            .spawn()
+            .map_err(|e| format!("Could not start local Jack Script server: {e}"))?;
         if !wait_for_server(port) {
-            return Err("Timed out waiting for the local King’s Press server to start.".into());
+            return Err("Timed out waiting for the local Jack Script server to start.".into());
         }
 
         let server = app.state::<DesktopServer>();
@@ -534,7 +623,11 @@ fn ollama_status() -> OllamaStatus {
                 installed: true,
                 running,
                 version: if text.is_empty() { None } else { Some(text) },
-                message: if running { None } else { Some("Ollama is installed but not running.".into()) },
+                message: if running {
+                    None
+                } else {
+                    Some("Ollama is installed but not running.".into())
+                },
             }
         }
         Err(_) => OllamaStatus {
@@ -593,7 +686,10 @@ fn start_ollama_service(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn list_ollama_models() -> Result<Vec<String>, String> {
-    let out = ollama_command().arg("list").output().map_err(|e| e.to_string())?;
+    let out = ollama_command()
+        .arg("list")
+        .output()
+        .map_err(|e| e.to_string())?;
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
@@ -630,10 +726,54 @@ fn save_model_choice(app: AppHandle, model: String) -> Result<(), String> {
     if model.is_empty() {
         return Err("Choose a model first.".into());
     }
+    let mut roles = HashMap::new();
+    for role in ["write", "review", "revise"] {
+        roles.insert(
+            role.into(),
+            DesktopRoleSelection {
+                provider: Some("ollama".into()),
+                model: Some(model.into()),
+                base_url: Some("http://127.0.0.1:11434".into()),
+                api_key: None,
+            },
+        );
+    }
     let settings = DesktopSettings {
         provider: Some("ollama".into()),
         model: model.into(),
         base_url: Some("http://127.0.0.1:11434".into()),
+        roles,
+    };
+    let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+    fs::write(settings_path(&app)?, json).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_ai_roles(
+    app: AppHandle,
+    roles: HashMap<String, DesktopRoleSelection>,
+) -> Result<(), String> {
+    let write = roles.get("write");
+    let provider = write
+        .and_then(|row| row.provider.clone())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "ollama".into());
+    let model = write
+        .and_then(|row| row.model.clone())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(default_model);
+    let base_url = write.and_then(|row| row.base_url.clone()).or_else(|| {
+        if provider == "ollama" {
+            Some("http://127.0.0.1:11434".into())
+        } else {
+            None
+        }
+    });
+    let settings = DesktopSettings {
+        provider: Some(provider),
+        model,
+        base_url,
+        roles,
     };
     let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     fs::write(settings_path(&app)?, json).map_err(|e| e.to_string())
@@ -646,7 +786,9 @@ fn get_model_choice(app: AppHandle) -> Result<Option<DesktopSettings>, String> {
         return Ok(None);
     }
     let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&text).map(Some).map_err(|e| e.to_string())
+    serde_json::from_str(&text)
+        .map(Some)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -704,11 +846,12 @@ fn main() {
             list_ollama_models,
             pull_ollama_model,
             save_model_choice,
+            save_ai_roles,
             get_model_choice,
             init_local_database,
             create_local_backup,
             desktop_runtime_status
         ])
         .run(tauri::generate_context!())
-        .expect("error while running King's Press Editorial Desk");
+        .expect("error while running Jack Script");
 }

@@ -1,8 +1,8 @@
 [package]
-name = "kings-press-editorial-desk"
+name = "jack-script"
 version = "0.1.0"
-description = "King's Press Editorial Desk"
-authors = ["King's Press"]
+description = "Jack Script"
+authors = ["Jack Script"]
 edition = "2021"
 build = "build.rs"
 

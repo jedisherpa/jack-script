@@ -3,7 +3,7 @@ import { PROVIDER_CAPABILITIES } from "@/lib/llm/config";
 import type { AIMessage, LLMAdapter, LLMConfig } from "@/lib/llm/types";
 
 type ChatResponse = {
-  choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
+  choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }>; reasoning_content?: string } }>;
 };
 
 function contentToText(content: string | Array<{ type?: string; text?: string }> | undefined): string {
@@ -43,7 +43,8 @@ export function openAICompatibleProvider(config: LLMConfig): LLMAdapter {
         throw new LLMError(res.status, "llm", `${config.provider} request failed.`, config.provider);
       }
       const json = (await res.json()) as ChatResponse;
-      const text = contentToText(json.choices?.[0]?.message?.content);
+      const message = json.choices?.[0]?.message;
+      const text = contentToText(message?.content) || message?.reasoning_content || "";
       if (!text) throw new LLMError(502, "llm", `${config.provider} returned no text.`, config.provider);
       return text;
     },
