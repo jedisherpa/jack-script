@@ -1,12 +1,16 @@
 /* Outputs tab — platform toggles, audience presets, provenance diagram,
    fixed-order generation, and one result card per platform. */
 
-const PLAT_AUD_DEFAULT = { substack: "builders", facebook: "relational", instagram: "women-ai", x: "builders", threads: "general" };
+const PLAT_AUD_DEFAULT = {
+  logline: "studio_exec", one_page_synopsis: "general", full_treatment: "director",
+  pitch_deck_text: "studio_exec", character_breakdowns: "lead_actor", scene_outline: "producer",
+  production_breakdown: "producer", table_read_script: "lead_actor",
+};
 
 function derivationLabel(pid, activeIds) {
   const src = window.GEN.resolveSources(activeIds)[pid] || ["__source__"];
-  if (src[0] === "__source__") return "from Source";
-  return "from " + src.map((s) => s[0].toUpperCase() + s.slice(1)).join(" + ");
+  if (src[0] === "__source__") return "from Script";
+  return "from " + src.map((s) => s.replace(/_/g, " ")).join(" + ");
 }
 
 function ProvenanceMap({ activeIds, prog }) {
@@ -266,7 +270,7 @@ function OutputsTab({ piece, onUpdate, refCtx, onGoStudio }) {
   };
 
   if (!piece.original || !piece.original.trim()) {
-    return <EmptyState icon="doc" title="No source yet" body="Add a draft on the Draft tab first. Platform versions are built from your piece (the revision if you've made one, otherwise your original)." />;
+    return <EmptyState icon="doc" title="No script yet" body="Write your screenplay on the Script tab first. Artifacts are built from your revision (if present) or original draft." />;
   }
 
   const usingRevision = !!(piece.revision && piece.revision.text);
@@ -274,7 +278,7 @@ function OutputsTab({ piece, onUpdate, refCtx, onGoStudio }) {
   return (
     <div className="scroll-y" style={{ flex: 1 }}>
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "30px 32px 90px" }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>Platform Generation</div>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Screenplay Artifacts</div>
         <h2 style={{ fontSize: 30, marginBottom: 8 }}>Make it platform-native</h2>
         <p className="muted" style={{ fontSize: 16, marginBottom: 4 }}>
           Each post is an independent entry point, not an excerpt. Generated in a fixed order so each derives from the right source.

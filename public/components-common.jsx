@@ -175,6 +175,6 @@ async function extractFileText(file) {
   return (d && d.text) || "";
 }
 // Broad accept list for the upload inputs.
-const UPLOAD_ACCEPT = ".txt,.md,.markdown,.csv,.tsv,.json,.log,.html,.htm,.xml,.yaml,.yml,.rtf,.pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,text/*,application/pdf,image/*";
+const UPLOAD_ACCEPT = ".txt,.md,.markdown,.fountain,.fdx,.csv,.tsv,.json,.log,.html,.htm,.xml,.yaml,.yml,.rtf,.pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,text/*,application/pdf,application/xml,image/*";
 
 Object.assign(window, { Icon, StatusChip, SeverityDot, SeverityTag, CopyButton, Spinner, Tabs, relTime, STATUS_VAR, useIsMobile, extractFileText, UPLOAD_ACCEPT });

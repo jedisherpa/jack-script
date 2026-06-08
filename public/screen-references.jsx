@@ -184,7 +184,7 @@ function References({ refs, role, campaignName }) {
         {aiOpen && <RefsAIModal campaignId={campaignId} onClose={() => setAiOpen(false)} onApply={(doc) => window.Store.updateReferences(doc)} />}
         <div className="eyebrow" style={{ marginBottom: 8 }}>{campaignName ? campaignName + " · guidelines" : "Source of truth"}</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-          <h1 style={{ fontSize: 42, letterSpacing: "-0.02em", margin: 0 }}>References</h1>
+          <h1 style={{ fontSize: 42, letterSpacing: "-0.02em", margin: 0 }}>Project Bible</h1>
           {!readOnly && <button className="btn" onClick={() => setAiOpen(true)} title="Revise the references document with AI"><Icon name="sparkle" size={15} /> Edit with AI</button>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderRadius: "var(--radius)", background: readOnly ? "var(--paper-sunk)" : "var(--accent-soft)", marginBottom: 30 }}>

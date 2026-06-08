@@ -39,95 +39,68 @@ function FindingItem({ f, idx, gateId, selected, onSelect }) {
           {f.anchor && <Icon name="jump" size={13} style={{ color: "var(--ink-3)", flexShrink: 0, marginTop: 3 }} />}
         </div>
         <div className="muted" style={{ fontSize: 14.5, lineHeight: 1.5 }}>{f.detail}</div>
+        {f.sceneRef && <div className="mono" style={{ fontSize: 11, color: "var(--accent-ink)", marginTop: 4 }}>{f.sceneRef}</div>}
+        {f.suggestion && <div className="muted" style={{ fontSize: 13.5, marginTop: 4, fontStyle: "italic" }}>→ {f.suggestion}</div>}
         {f.anchor && <div className="mono" style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 5, fontStyle: "italic" }}>“{f.anchor}”</div>}
       </div>
     </div>
   );
 }
 
-const TYPE_LABEL = { historical: "Historical fact", "named-claim": "Named-party claim", empirical: "Empirical", testimony: "Testimony · exempt" };
-
 function GateBody({ g, r, onSelect, selKey }) {
   return (
     <div>
-      {/* gate-specific content */}
-      {g.kind === "strategy" && (
+      {g.kind === "format" && (
+        <div style={{ marginBottom: 12, display: "flex", gap: 16, flexWrap: "wrap" }}>
+          {r.estimatedPages != null && <span className="chip">~{r.estimatedPages} pages</span>}
+          {r.estimatedRuntimeMinutes != null && <span className="chip">~{r.estimatedRuntimeMinutes} min</span>}
+          {r.actNotes && <div className="muted" style={{ fontSize: 14, width: "100%" }}>{r.actNotes}</div>}
+        </div>
+      )}
+      {g.kind === "character" && (
         <div style={{ marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-            {(r.servedThroughlines || []).map((t) => <span key={t} className="chip" style={{ color: "var(--accent-ink)", borderColor: "var(--accent)" }}><span className="dot" />{t}</span>)}
-            {(!r.servedThroughlines || r.servedThroughlines.length === 0) && <span className="chip">no throughline served</span>}
+            {(r.charactersPresent || []).map((c) => <span key={c} className="chip" style={{ fontFamily: "var(--font-mono)" }}>{c}</span>)}
           </div>
-          {r.nearestAngle && <div style={{ fontSize: 14.5 }}><span className="eyebrow">Nearest angle · </span>{r.nearestAngle}</div>}
-        </div>
-      )}
-      {g.kind === "audience" && (
-        <div style={{ marginBottom: 12 }}>
-          {r.recommended && (
-            <div style={{ marginBottom: 12, padding: "10px 12px", background: "var(--accent-soft)", borderRadius: "var(--radius)" }}>
-              <span className="eyebrow" style={{ color: "var(--accent-ink)" }}>Recommended audience</span>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 18, marginTop: 2 }}>{r.recommended.name}</div>
-              <div className="muted" style={{ fontSize: 14 }}>{r.recommended.why}</div>
-            </div>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            {(r.scores || []).slice().sort((a, b) => b.score - a.score).map((s) => (
-              <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1fr 90px 34px", gap: 10, alignItems: "center" }}>
-                <span style={{ fontSize: 13.5 }}>{s.name}</span>
-                <div style={{ height: 5, background: "var(--paper-sunk)", borderRadius: 99 }}>
-                  <div style={{ height: 5, width: `${s.score}%`, background: "var(--accent)", borderRadius: 99 }} />
-                </div>
-                <span className="mono muted" style={{ fontSize: 11, textAlign: "right" }}>{s.score}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {g.kind === "tone" && r.detectedRegister && (
-        <div style={{ marginBottom: 12 }}>
-          <span className="eyebrow">Detected register · </span>
-          <span className="chip" style={{ color: "var(--accent-ink)", borderColor: "var(--accent)" }}>{r.detectedRegister.name}</span>
-        </div>
-      )}
-      {g.kind === "rigor" && (r.claims || []).length > 0 && (
-        <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          {(r.claims || []).map((c, i) => (
-            <div key={i} style={{ padding: "9px 11px", border: "1px solid var(--hair)", borderRadius: "var(--radius)", background: "var(--paper-sunk)" }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "baseline", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 14 }}>{c.text}</span>
-                <span className="mono" style={{ fontSize: 10, whiteSpace: "nowrap", color: c.type === "testimony" ? "var(--ink-3)" : "var(--ink-2)" }}>{TYPE_LABEL[c.type] || c.type}</span>
-              </div>
-              {c.overclaimed && <div style={{ marginTop: 4 }}><SeverityTag sev="must" /> <span className="muted" style={{ fontSize: 13 }}>reads as overclaimed</span></div>}
-              {c.verificationQuery && c.type !== "testimony" && (
-                <div className="mono" style={{ fontSize: 11.5, color: "var(--accent-ink)", marginTop: 5 }}>⌕ {c.verificationQuery}</div>
-              )}
-            </div>
+          {(r.voiceDrift || []).map((v, i) => (
+            <div key={i} className="muted" style={{ fontSize: 13.5, marginBottom: 4 }}>{v.character}: {v.issue} <span className="mono">({v.sceneRef})</span></div>
           ))}
         </div>
       )}
-      {g.kind === "stress" && (
-        <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-          {r.steelman && <div><span className="eyebrow">Steelman</span><p style={{ fontSize: 14.5, margin: "4px 0 0" }}>{r.steelman}</p></div>}
-          {(r.counters || []).length > 0 && (
-            <div><span className="eyebrow">Next-strongest counters</span>
-              <ol style={{ margin: "4px 0 0", paddingLeft: 20, fontSize: 14.5 }}>{r.counters.map((c, i) => <li key={i} style={{ marginBottom: 4 }}>{c}</li>)}</ol>
-            </div>
-          )}
-          {(r.screenshotTests || []).length > 0 && (
-            <div><span className="eyebrow">Screenshot test</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 5 }}>
-                {r.screenshotTests.map((s, i) => (
-                  <div key={i} style={{ padding: "9px 11px", border: "1px solid var(--sev-must)", borderRadius: "var(--radius)", background: "var(--sev-must-bg)" }}>
-                    <div className="mono" style={{ fontSize: 12, fontStyle: "italic" }}>“{s.quote}”</div>
-                    <div style={{ fontSize: 13.5, marginTop: 5 }}><span className="eyebrow" style={{ color: "var(--sev-must)" }}>Misread · </span>{s.misread}</div>
-                    <div style={{ fontSize: 13.5, marginTop: 4 }}><span className="eyebrow" style={{ color: "var(--st-approved)" }}>Inoculate · </span>{s.inoculation}</div>
-                  </div>
-                ))}
-              </div>
+      {g.kind === "dialogue" && r.speakabilityScore != null && (
+        <div style={{ marginBottom: 12 }}>
+          <span className="eyebrow">Speakability · </span>
+          <span className="mono" style={{ color: "var(--accent-ink)" }}>{r.speakabilityScore}/100</span>
+        </div>
+      )}
+      {g.kind === "pacing" && (r.beatMap || []).length > 0 && (
+        <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          {(r.beatMap || []).map((b, i) => (
+            <div key={i} style={{ fontSize: 14 }}><span className="eyebrow">{b.beat}</span> · {b.sceneRef} — <span className="muted">{b.assessment}</span></div>
+          ))}
+        </div>
+      )}
+      {g.kind === "visual" && r.unfilmableCount != null && (
+        <div style={{ marginBottom: 12 }}><span className="eyebrow">Unfilmable passages · </span>{r.unfilmableCount}</div>
+      )}
+      {g.kind === "theme" && (r.themeEchoes || []).length > 0 && (
+        <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          {(r.themeEchoes || []).map((t, i) => (
+            <div key={i} style={{ fontSize: 14 }}><span className="chip">{t.theme}</span> {t.sceneRef} — {t.strength}</div>
+          ))}
+        </div>
+      )}
+      {g.kind === "market" && (
+        <div style={{ marginBottom: 12 }}>
+          {r.highConcept && <div style={{ fontSize: 15, marginBottom: 8 }}><span className="eyebrow">High concept · </span>{r.highConcept}</div>}
+          {r.genreFit != null && <div style={{ marginBottom: 8 }}><span className="eyebrow">Genre fit · </span><span className="mono">{r.genreFit}/100</span></div>}
+          {(r.comparableTitles || []).length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {r.comparableTitles.map((t) => <span key={t} className="chip">{t}</span>)}
             </div>
           )}
         </div>
       )}
-
       {/* findings */}
       {(r.findings || []).length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>

@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
-import { db, campaigns, pieces } from "@/lib/db";
-import { deleteLocalPiece, getLocalPiece, updateLocalPiece } from "@/lib/local/database";
+import { db, campaigns, pieces, references } from "@/lib/db";
+import {
+  deleteLocalPiece,
+  getLocalPiece,
+  getLocalReferences,
+  updateLocalPiece,
+  updateLocalReferences,
+} from "@/lib/local/database";
 import { isLocalFirstMode } from "@/lib/local/mode";
 import { updatePieceSchema } from "@/lib/schemas-pieces";
 import { toErrorResponse } from "@/lib/errors";
+import { enrichScriptFromText } from "@/lib/screenplay/enrich";
+import { mergeScriptIntoBible } from "@/lib/screenplay/bibleSync";
 import type { SessionUser } from "@/lib/auth";
 import type { Piece } from "@/lib/db";
 
@@ -72,6 +80,32 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
+    const enrichment = body.original !== undefined ? enrichScriptFromText(body.original) : null;
+
+    async function syncBibleFromScript(campaignId: string) {
+      if (!enrichment || (!enrichment.characters.length && !enrichment.locations.length)) return;
+      if (isLocalFirstMode()) {
+        const ref = getLocalReferences(campaignId, user.workspaceId);
+        if (!ref) return;
+        const sync = mergeScriptIntoBible(ref.doc, enrichment.characters, enrichment.locations);
+        if (sync) updateLocalReferences(campaignId, { patch: sync.patch }, user.workspaceId);
+        return;
+      }
+      const ref = await db.query.references.findFirst({
+        where: eq(references.campaignId, campaignId),
+      });
+      if (!ref) return;
+      const sync = mergeScriptIntoBible(ref.doc as Record<string, unknown>, enrichment.characters, enrichment.locations);
+      if (!sync) return;
+      await db
+        .update(references)
+        .set({
+          doc: { ...(ref.doc as Record<string, unknown>), ...sync.patch },
+          updatedAt: new Date(),
+        })
+        .where(eq(references.campaignId, campaignId));
+    }
+
     if (isLocalFirstMode()) {
       const piece = updateLocalPiece(
         existing.id,
@@ -82,10 +116,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           ...(body.status !== undefined ? { status: body.status } : {}),
           ...(body.direction !== undefined ? { direction: body.direction } : {}),
           ...(mergedNotes !== undefined ? { gateNotes: mergedNotes } : {}),
+          ...(enrichment
+            ? {
+                pageEstimate: enrichment.pageEstimate,
+                sceneCount: enrichment.sceneCount,
+                parsedScenes: enrichment.parsedScenes,
+              }
+            : {}),
         },
         user.workspaceId,
       );
       if (!piece) return notFound();
+      if (enrichment) await syncBibleFromScript(existing.campaignId);
       return NextResponse.json({ piece });
     }
 
@@ -97,11 +139,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         ...(body.status !== undefined ? { status: body.status } : {}),
         ...(body.direction !== undefined ? { direction: body.direction } : {}),
         ...(mergedNotes !== undefined ? { gateNotes: mergedNotes } : {}),
+        ...(enrichment
+          ? {
+              pageEstimate: enrichment.pageEstimate,
+              sceneCount: enrichment.sceneCount,
+              parsedScenes: enrichment.parsedScenes,
+            }
+          : {}),
         updatedAt: new Date(),
       })
       .where(and(eq(pieces.id, existing.id), eq(pieces.userId, user.id)))
       .returning();
 
+    if (enrichment) await syncBibleFromScript(existing.campaignId);
     return NextResponse.json({ piece });
   } catch (err) {
     return toErrorResponse(err);

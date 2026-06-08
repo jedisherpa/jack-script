@@ -81,14 +81,38 @@ function GateRail({ gateStatus, packet, onJump }) {
   );
 }
 
+function handleScreenplayKeyDown(e, text, setText) {
+  if (e.key !== "Enter") return;
+  const el = e.target;
+  const start = el.selectionStart;
+  const before = text.slice(0, start);
+  const lineStart = before.lastIndexOf("\n") + 1;
+  const currentLine = before.slice(lineStart);
+  if (/^(INT\.|EXT\.)/i.test(currentLine.trim())) {
+    e.preventDefault();
+    const after = text.slice(start);
+    const next = text.slice(0, start) + "\n\n" + after;
+    setText(next);
+    onChangeDeferred(el, start + 2, next);
+  }
+}
+
+function onChangeDeferred(el, pos, val) {
+  requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = pos; });
+}
+
 function DraftTab({ piece, running, gateStatus, onRun, onChangeOriginal, onGoReview }) {
   const [text, setText] = React.useState(piece.original || "");
+  const [screenplayView, setScreenplayView] = React.useState(true);
+  const [editMode, setEditMode] = React.useState("edit");
+  const Preview = window.SCREENPLAY && window.SCREENPLAY.ScreenplayPreview;
   const fileRef = React.useRef(null);
   const [uploading, setUploading] = React.useState(false);
   const isMobile = window.useIsMobile();
   React.useEffect(() => { setText(piece.original || ""); }, [piece.id]);
 
   const wc = window.wordCount(text);
+  const pages = piece.pageEstimate || window.estimatePages(text);
   const dirty = text !== piece.original;
   const hasPacket = !!piece.packet;
 
@@ -113,43 +137,60 @@ function DraftTab({ piece, running, gateStatus, onRun, onChangeOriginal, onGoRev
 
         {/* Draft column */}
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div className="eyebrow">The Draft</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span className="mono muted" style={{ fontSize: 12 }}>{wc} words</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+            <div className="eyebrow">Screenplay Draft</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span className="mono muted" style={{ fontSize: 12 }}>~{pages} pg · {wc} words</span>
+              <button className={"btn ghost sm" + (editMode === "preview" ? " active" : "")} onClick={() => setEditMode(editMode === "preview" ? "edit" : "preview")} title="Formatted block preview">
+                <Icon name="doc" size={14} /> {editMode === "preview" ? "Edit" : "Preview"}
+              </button>
+              {editMode === "edit" && (
+                <button className={"btn ghost sm" + (screenplayView ? " active" : "")} onClick={() => setScreenplayView(!screenplayView)} title="Monospace screenplay typing">
+                  <Icon name="doc" size={14} /> {screenplayView ? "Mono" : "Plain"}
+                </button>
+              )}
               <input ref={fileRef} type="file" accept={window.UPLOAD_ACCEPT} style={{ display: "none" }} onChange={upload} />
-              <button className="btn ghost sm" onClick={() => fileRef.current.click()} disabled={running || uploading} title="PDF, image, .docx, or text file">
-                {uploading ? <><Spinner size={14} /> Reading…</> : <><Icon name="doc" size={14} /> Upload</>}
+              <button className="btn ghost sm" onClick={() => fileRef.current.click()} disabled={running || uploading} title="Import .fdx, .fountain, PDF, or text">
+                {uploading ? <><Spinner size={14} /> Reading…</> : <><Icon name="doc" size={14} /> Import</>}
               </button>
             </div>
           </div>
-          <textarea
-            className="field"
-            value={text}
-            disabled={running}
-            onChange={(e) => setText(e.target.value)}
-            onBlur={() => dirty && onChangeOriginal(text)}
-            placeholder="Paste your finished draft here. Nothing to configure — the gates read your reference docs and your draft, then hand back a Review Packet and a Proposed Revision."
-            style={{
-              minHeight: 460, fontSize: 17.5, lineHeight: 1.7, fontFamily: "var(--font-body)",
-              background: "var(--paper-2)", resize: "vertical", padding: "22px 24px",
-            }}
-          />
-          <div style={{ display: "flex", gap: 12, marginTop: 18, alignItems: "center" }}>
+          {editMode === "preview" && Preview ? (
+            <Preview text={text} />
+          ) : (
+            <textarea
+              className="field"
+              value={text}
+              disabled={running}
+              onChange={(e) => setText(e.target.value)}
+              onBlur={() => dirty && onChangeOriginal(text)}
+              onKeyDown={(e) => screenplayView && handleScreenplayKeyDown(e, text, setText)}
+              placeholder="Write in screenplay format (INT./EXT. sluglines, ALL CAPS character names). Import .fdx or .fountain, or paste directly. Coverage reads your Bible and script."
+              style={{
+                minHeight: 460,
+                fontSize: screenplayView ? 14 : 17.5,
+                lineHeight: screenplayView ? 1.55 : 1.7,
+                fontFamily: screenplayView ? "var(--font-mono)" : "var(--font-body)",
+                background: "var(--paper-2)", resize: "vertical", padding: "22px 24px",
+                letterSpacing: screenplayView ? "0.02em" : "normal",
+              }}
+            />
+          )}
+          <div style={{ display: "flex", gap: 12, marginTop: 18, alignItems: "center", flexWrap: "wrap" }}>
             <button className="btn primary" disabled={running || wc < 3} onClick={() => { if (dirty) onChangeOriginal(text); onRun(); }}>
-              {running ? <><Spinner size={15} /> Running the gates…</> : <><Icon name="play" size={15} /> {hasPacket ? "Re-run review" : "Run review"}</>}
+              {running ? <><Spinner size={15} /> Running coverage…</> : <><Icon name="play" size={15} /> {hasPacket ? "Re-run coverage" : "Run coverage"}</>}
             </button>
             {hasPacket && !running && (
-              <button className="btn" onClick={onGoReview}>Open Review Packet <Icon name="arrowR" size={15} /></button>
+              <button className="btn" onClick={onGoReview}>Open Coverage Packet <Icon name="arrowR" size={15} /></button>
             )}
-            {dirty && !running && <span className="eyebrow" style={{ color: "var(--accent-ink)" }}>unsaved edits</span>}
+            {dirty && !running && <span className="eyebrow" style={{ color: "var(--accent-ink)" }}>unsaved — saves on blur</span>}
           </div>
         </div>
 
         {/* Gate rail column */}
         <div className="card" style={{ padding: "22px 22px", position: "sticky", top: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-            <div className="eyebrow">Seven Gates</div>
+            <div className="eyebrow">Script Coverage</div>
             {running && <span className="eyebrow" style={{ color: "var(--accent-ink)" }}>in session</span>}
           </div>
           <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>

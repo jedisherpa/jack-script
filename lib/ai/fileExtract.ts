@@ -1,4 +1,5 @@
 import { getFileAI, type MultimodalContentBlock } from "@/lib/llm";
+import { parseScriptFile } from "@/lib/screenplay/fdx";
 
 /**
  * Turn an uploaded file into research text.
@@ -30,6 +31,10 @@ export async function extractFileText(input: ExtractInput): Promise<string> {
   const name = input.name || "file";
   const ext = (name.split(".").pop() || "").toLowerCase();
   const mime = (input.mimeType || "").toLowerCase();
+
+  // Screenplay formats — FDX, Fountain (no model call).
+  const scriptText = parseScriptFile(name, input.bytes);
+  if (scriptText?.trim()) return scriptText.trim();
 
   // Text family — decode directly, no model call.
   if (mime.startsWith("text/") || TEXT_EXT.test(ext)) {

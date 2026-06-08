@@ -77,6 +77,23 @@ Editorial bibles import cleanly — legacy `strategy`/`audiences` keys render un
 
 - `lib/screenplay/parser.ts` — slugline/dialogue/scene detection, page estimate
 - `lib/screenplay/export.ts` — Fountain + formatted screenplay text + breakdown markdown
+- `lib/screenplay/pdf.ts` — professional PDF (Courier 12pt, standard margins)
+- `lib/screenplay/fdx.ts` — Final Draft XML import/export
+- `lib/screenplay/enrich.ts` — auto-populate page/scene metadata on script save
+- `lib/screenplay/bibleSync.ts` — merge detected characters/locations into Project Bible on save
+- `docs/SCREENPLAY_FORMAT.md` — format reference for writers
+
+## Export API
+
+`GET /api/pieces/:id/export?format=pdf|fountain|fdx|formatted|breakdown`
+
+Import: `.fdx`, `.fountain` via Upload/Import or `/api/extract`.
+
+UI: **Export** tab lists project scripts with one-click PDF/FDX/Fountain downloads and formatted block preview.
+
+## Bible auto-sync
+
+Saving script text auto-adds detected character names and slugline locations to the Bible when they are not already present. Manual Bible edits are never overwritten.
 
 ## Tests
 

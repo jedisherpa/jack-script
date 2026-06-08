@@ -639,7 +639,7 @@ export function getLocalPiece(id: string, userId: string, workspaceId = LOCAL_WO
 export function updateLocalPiece(
   id: string,
   userId: string,
-  patch: Partial<Pick<LocalPiece, "title" | "original" | "status" | "direction" | "packet" | "revision" | "outputs" | "outputOrder">> & { gateNotes?: Record<string, string> },
+  patch: Partial<Pick<LocalPiece, "title" | "original" | "status" | "direction" | "packet" | "revision" | "outputs" | "outputOrder" | "pageEstimate" | "sceneCount" | "parsedScenes" | "format">> & { gateNotes?: Record<string, string> },
   workspaceId = LOCAL_WORKSPACE_ID,
 ): LocalPiece | null {
   const existing = getLocalPiece(id, userId, workspaceId);
@@ -652,6 +652,10 @@ export function updateLocalPiece(
            original = ?,
            status = ?,
            direction = ?,
+           format = ?,
+           page_estimate = ?,
+           scene_count = ?,
+           parsed_scenes_json = ?,
            packet_json = ?,
            revision_json = ?,
            outputs_json = ?,
@@ -665,6 +669,10 @@ export function updateLocalPiece(
       patch.original ?? existing.original,
       patch.status ?? existing.status,
       patch.direction ?? existing.direction,
+      patch.format ?? existing.format,
+      patch.pageEstimate !== undefined ? patch.pageEstimate : existing.pageEstimate,
+      patch.sceneCount !== undefined ? patch.sceneCount : existing.sceneCount,
+      JSON.stringify(patch.parsedScenes !== undefined ? patch.parsedScenes : existing.parsedScenes),
       JSON.stringify(patch.packet !== undefined ? patch.packet : existing.packet),
       JSON.stringify(patch.revision !== undefined ? patch.revision : existing.revision),
       JSON.stringify(patch.outputs !== undefined ? patch.outputs : existing.outputs),

@@ -1,4 +1,4 @@
-/* Library — home. List of pieces with status, filter, new piece. */
+/* Scripts library — home. List of scripts with status, filter, new script. */
 
 function wordCount(t) { return (t || "").trim() ? (t.trim().split(/\s+/).length) : 0; }
 
@@ -16,7 +16,8 @@ function PieceRow({ piece, onOpen, onDelete }) {
     } catch (err) { window.alert((err && err.message) || "Couldn't auto-title."); }
     setTitling(false);
   };
-  const snippet = (piece.original || "").trim().split("\n").find((l) => l.trim()) || "No draft yet — paste one to begin.";
+  const snippet = (piece.original || "").trim().split("\n").find((l) => l.trim()) || "No script yet — write or import one to begin.";
+  const pages = piece.pageEstimate || window.estimatePages(piece.original);
   const hasPacket = !!piece.packet;
   const hasRev = !!piece.revision;
   const nOut = (piece.outputOrder || []).length;
@@ -40,12 +41,12 @@ function PieceRow({ piece, onOpen, onDelete }) {
           maxWidth: "62ch", fontStyle: piece.original ? "normal" : "italic",
         }}>{snippet}</p>
         <div style={{ display: "flex", gap: 14, marginTop: 10, alignItems: "center" }}>
-          <span className="eyebrow">{wordCount(piece.original)} words</span>
+          <span className="eyebrow">~{pages} pg · {wordCount(piece.original)} words</span>
           <span className="eyebrow">· edited {window.relTime(piece.updatedAt)}</span>
           <div style={{ display: "flex", gap: 7, marginLeft: 4 }}>
-            <ProgressPip on={hasPacket} label="Reviewed" />
+            <ProgressPip on={hasPacket} label="Coverage" />
             <ProgressPip on={hasRev} label="Revised" />
-            <ProgressPip on={nOut > 0} label={nOut ? `${nOut} outputs` : "Outputs"} />
+            <ProgressPip on={nOut > 0} label={nOut ? `${nOut} artifacts` : "Artifacts"} />
           </div>
         </div>
       </div>
@@ -95,7 +96,7 @@ function Library({ pieces, campaignName, onOpen, onNew, onDelete }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 6 }}>
           <div>
             <div className="eyebrow" style={{ marginBottom: 8 }}>{campaignName ? campaignName + " · campaign" : "The Desk"}</div>
-            <h1 style={{ fontSize: 42, letterSpacing: "-0.02em" }}>Library</h1>
+            <h1 style={{ fontSize: 42, letterSpacing: "-0.02em" }}>Scripts</h1>
           </div>
           <button className="btn primary" onClick={onNew}>
             <Icon name="plus" size={16} /> New piece

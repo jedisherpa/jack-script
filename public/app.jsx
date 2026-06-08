@@ -106,10 +106,11 @@ function Workspace({ piece, refs, onBack, onGoStudio }) {
   const findingCount = piece.packet ? window.GATES.reduce((n, g) => n + (piece.packet[g.id] ? piece.packet[g.id].findings.length : 0), 0) : null;
 
   const tabs = [
-    { id: "draft", label: "Draft" },
-    { id: "review", label: "Review", badge: findingCount },
+    { id: "draft", label: "Script" },
+    { id: "review", label: "Coverage", badge: findingCount },
     { id: "revision", label: "Revision" },
-    { id: "outputs", label: "Outputs", badge: (piece.outputOrder || []).length || null },
+    { id: "breakdown", label: "Breakdown", badge: piece.sceneCount || null },
+    { id: "outputs", label: "Artifacts", badge: (piece.outputOrder || []).length || null },
     { id: "media", label: "Media", badge: window.Store.mediaForPiece(piece.id).length || null },
   ];
 
@@ -135,8 +136,9 @@ function Workspace({ piece, refs, onBack, onGoStudio }) {
       )}
       {tab === "review" && (piece.packet
         ? <ReviewTab piece={piece} />
-        : <EmptyState icon="flag" title="No review packet yet" body="Paste a draft on the Draft tab and run the seven gates. The packet appears here, beside your original." />)}
+        : <EmptyState icon="flag" title="No coverage packet yet" body="Write your script on the Script tab and run Script Coverage. Findings appear here beside your draft." />)}
       {tab === "revision" && <RevisionTab piece={piece} onUpdate={update} refCtx={refCtx} />}
+      {tab === "breakdown" && <BreakdownTab piece={piece} refs={refs} onGoStudio={onGoStudio} />}
       {tab === "outputs" && <OutputsTab piece={piece} onUpdate={update} refCtx={refCtx} onGoStudio={onGoStudio} />}
       {tab === "media" && <MediaTab piece={piece} onGoStudio={onGoStudio} />}
     </div>
@@ -243,7 +245,7 @@ function CampaignSwitcher({ campaigns, activeId, onSelect, onAdd }) {
   const active = campaigns.find((c) => c.id === activeId) || campaigns[0];
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button onClick={() => setOpen((o) => !o)} title="Switch campaign"
+      <button onClick={() => setOpen((o) => !o)} title="Switch project"
         style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
           border: "1px solid var(--hair-2)", background: "var(--paper-2)", color: "var(--ink)",
           borderRadius: 999, padding: "6px 12px", height: 34 }}>
@@ -273,9 +275,9 @@ function CampaignSwitcher({ campaigns, activeId, onSelect, onAdd }) {
             );
           })}
           <hr className="rule" style={{ margin: "5px 4px" }} />
-          <button onClick={() => { const n = prompt("New campaign name"); if (n && n.trim()) onAdd(n.trim()); setOpen(false); }}
+          <button onClick={() => { const n = prompt("New project name"); if (n && n.trim()) onAdd(n.trim()); setOpen(false); }}
             className="mono" style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, border: "none", background: "transparent", cursor: "pointer", borderRadius: "var(--radius)", padding: "9px 10px", color: "var(--ink-3)", fontSize: 12, letterSpacing: "0.04em" }}>
-            <Icon name="plus" size={13} /> NEW CAMPAIGN
+            <Icon name="plus" size={13} /> NEW PROJECT
           </button>
         </div>
       )}
@@ -472,8 +474,8 @@ function App() {
         <Studio campaignId={state.activeCampaignId} pieces={campaignPieces} onOpenPiece={openPiece} />
       )}
       {view === "book" && (
-        <BookWriter campaigns={campaigns} allPieces={state.pieces} role={role}
-          onOpenPiece={openPiece} onActivateCampaign={(id) => window.Store.setActiveCampaign(id)} />
+        <ScriptExport pieces={campaignPieces} campaignName={activeCampaign && activeCampaign.name}
+          onOpenPiece={openPiece} />
       )}
       {view === "library" && (
         <Library pieces={campaignPieces} campaignName={activeCampaign && activeCampaign.name} onOpen={openPiece}

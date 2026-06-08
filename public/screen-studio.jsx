@@ -123,7 +123,7 @@ function StyleSurveyModal({ campaignId, profile, mediaJobId, onClose, onSaved })
           <h3 style={{ fontSize: 22 }}>Tune image style</h3>
           <span className="mono muted" style={{ fontSize: 11 }}>round {profile ? profile.rounds : 0} → {(profile ? profile.rounds : 0) + 1}</span>
         </div>
-        <p className="muted" style={{ fontSize: 13.5, marginTop: 4, marginBottom: 14 }}>Rate the latest image and nudge the knobs. Your taste folds into an evolving directive that steers future images for this campaign.</p>
+        <p className="muted" style={{ fontSize: 13.5, marginTop: 4, marginBottom: 14 }}>Rate the latest image and nudge the knobs. Your taste folds into an evolving directive that steers future storyboard and mood imagery for this project.</p>
         <StField label="Rating"><Segmented value={rating} onChange={setRating} options={[1, 2, 3, 4, 5].map((n) => ({ v: n, l: String(n) }))} /></StField>
         <StField label="Palette"><Segmented value={knobs.palette} onChange={(v) => setKnob("palette", v)} options={K.palette} /></StField>
         <StField label="Mood"><Segmented value={knobs.mood} onChange={(v) => setKnob("mood", v)} options={K.mood} /></StField>
@@ -324,7 +324,7 @@ function Studio({ campaignId, pieces, onOpenPiece }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 6, flexWrap: "wrap", gap: 12 }}>
           <div>
             <div className="eyebrow" style={{ marginBottom: 8 }}>Hedra · ElevenLabs</div>
-            <h1 style={{ fontSize: 42, letterSpacing: "-0.02em" }}>Studio</h1>
+            <h1 style={{ fontSize: 42, letterSpacing: "-0.02em" }}>Visual Bible</h1>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <StatusChipMini ok={hedraOn} label={hedraOn ? "Hedra connected" : "Hedra: demo mode"} />
@@ -334,7 +334,7 @@ function Studio({ campaignId, pieces, onOpenPiece }) {
           </div>
         </div>
         <p className="muted" style={{ fontSize: 16, marginTop: 12, maxWidth: "60ch" }}>
-          Generate imagery, animation, and voiced video for this campaign. Make a voiceover with ElevenLabs, then sync a Hedra avatar or animation to it — and attach the result to any piece.
+          Generate storyboard frames, mood imagery, animation, and voiced video for this project. Make a voiceover with ElevenLabs, then sync a Hedra avatar or animation to it — and attach the result to any script.
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "420px 1fr", gap: isMobile ? 18 : 32, alignItems: "start", marginTop: isMobile ? 18 : 26 }}>
@@ -418,7 +418,7 @@ function Studio({ campaignId, pieces, onOpenPiece }) {
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                   <StToggle on={enhance} onChange={() => setEnhance((o) => !o)} />
                   <span style={{ fontSize: 14, lineHeight: 1.4 }}>Art-direct the prompt
-                    <span className="muted"> — compose a cover-quality image from the article, brand, and learned style</span></span>
+                    <span className="muted"> — compose a cover-quality image from the script, Bible, and learned style</span></span>
                 </div>
                 {enhance && (!directed ? (
                   <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={regenPrompt} disabled={directing}>

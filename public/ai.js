@@ -70,30 +70,37 @@
   function refContext(refs) {
     const r = refs || (window.Store && window.Store.activeReferences()) || {};
     const lines = [];
-    if (r.strategy) {
-      lines.push("THROUGHLINES:");
-      (r.strategy.throughlines || []).forEach((t) => lines.push(`- [${t.tag}] ${t.name}: ${t.note}`));
-      if (r.strategy.body) lines.push("Strategy note: " + r.strategy.body);
+    if (r.logline) lines.push("LOGLINE:\n" + r.logline);
+    if (r.synopsis) lines.push("\nSYNOPSIS:\n" + r.synopsis);
+    if (r.genre) lines.push("\nGENRE: " + r.genre);
+    if (r.toneBible) lines.push("\nTONE BIBLE:\n" + r.toneBible);
+    if (r.themes && r.themes.length) {
+      lines.push("\nTHEMES:");
+      r.themes.forEach((t) => lines.push("- " + t));
     }
-    if (r.audiences) {
-      lines.push("\nAUDIENCES:");
-      (r.audiences.list || []).forEach((a) => lines.push(`- [${a.id}] ${a.name}: ${a.note}`));
+    if (r.characters && r.characters.length) {
+      lines.push("\nCHARACTERS:");
+      r.characters.forEach((c) => {
+        lines.push("\n• " + c.name);
+        if (c.bio) lines.push("  Bio: " + c.bio);
+        if (c.voice) lines.push("  Voice: " + c.voice);
+        if (c.arc) lines.push("  Arc: " + c.arc);
+      });
     }
-    if (r.registers) {
-      lines.push("\nREGISTERS:");
-      (r.registers.list || []).forEach((x) => lines.push(`- [${x.id}] ${x.name}: ${x.note}`));
-      if (r.registers.body) lines.push(r.registers.body);
+    if (r.visualLanguage) lines.push("\nVISUAL LANGUAGE:\n" + r.visualLanguage);
+    if (r.beatSheet) lines.push("\nBEAT SHEET:\n" + r.beatSheet);
+    if (r.worldRules) {
+      const rules = Array.isArray(r.worldRules) ? r.worldRules : [r.worldRules];
+      lines.push("\nWORLD RULES:");
+      rules.forEach((x) => lines.push("- " + x));
     }
-    if (r.voiceRules) {
-      lines.push("\nCLARITY RULES:");
-      (r.voiceRules.rules || []).forEach((x, i) => lines.push(`${i + 1}. ${x}`));
-    }
-    if (r.redLines) {
+    if (r.redLines && r.redLines.rules) {
       lines.push("\nRED LINES:");
-      (r.redLines.rules || []).forEach((x) => lines.push(`- ${x}`));
+      r.redLines.rules.forEach((x) => lines.push("- " + x));
     }
-    if (r.selfVision && r.selfVision.body) {
-      lines.push("\nSELF-VISION (public identity):\n" + r.selfVision.body);
+    if (r.strategy) {
+      lines.push("\n[LEGACY] THROUGHLINES:");
+      (r.strategy.throughlines || []).forEach((t) => lines.push(`- [${t.tag}] ${t.name}: ${t.note}`));
     }
     return lines.join("\n");
   }
