@@ -1,0 +1,149 @@
+{
+  "approval_status": "not_approved",
+  "attempt": 1,
+  "audit_status": "passed",
+  "audit_submission_history": [
+    {
+      "prior_audit_status": "not_previously_audited",
+      "stage": "evidence",
+      "submitted_at": "2026-07-17T07:12:00.263587+00:00"
+    },
+    {
+      "stage": "approval",
+      "submitted_at": "2026-07-17T07:16:35.685149+00:00",
+      "prior_audit_status": "pending_final_approval"
+    }
+  ],
+  "baseline_commit": "1676c549e438899a325471c32dc480e4f5f87d4b",
+  "completed_at": "2026-07-17T07:11:54.462057+00:00",
+  "correction_history": [
+    {
+      "author_notes": "All blocking and high findings have been addressed. The README package map now includes generation-metadata.json. Contract statuses and fields in INTEGRATION_CONTRACTS.md and the implementation-manifest.yaml have been aligned, downgrading 'Locked' external dependencies to 'observed' and explicitly noting missing owner/versioning/approval boundaries. Proposed contracts feature corrected producer/consumer directions, along with explicit 'proposed/unknown' error and versioning fields. Command execution claims have been softened to 'present in package.json' with explicit notes that no execution logs are available. Mutating commands like db:generate have been flagged as requiring owner approval. Ownership and security boundary claims have been scoped strictly to the frozen evidence.",
+      "completed_at": "2026-07-17T07:16:16.200950+00:00",
+      "evidence_audit_sha256": "b6ac03ee3e28fccb2cdfc784899062fbcb8e110c4761b6ee509adaec5dfed8a4",
+      "finish_reason": "stop",
+      "input_package_sha256": "67331c20fde4f7fbfb5577534aa398c2d684c90e19cb4d1489ecbdd2874079e9",
+      "model_requested": "gemini-3.1-pro-preview",
+      "model_returned": "gemini-3.1-pro-preview",
+      "model_route": "sandbox_openai_compatible_proxy_chat_completions",
+      "output_chars": 33723,
+      "output_sha256": "ec5f4069a83436e7300b7266f358ab50649a4f05a07403b7368d324ce59ed802",
+      "prompt_chars": 146722,
+      "prompt_sha256": "8061338bab8f856741e7882279da0b1324ef168aec878aec15e8fbb2f2096cfc",
+      "provider": "Manus built-in LLM proxy",
+      "reasoning_effort": "default",
+      "request_id": "chatcmpl-llm-router-openai",
+      "source_packet_sha256": "e99dbe560025e9165d5625f9cb46faf26270859f30f2cc1d1ab0dbebafc7c439",
+      "stage": "evidence_audit_correction",
+      "started_at": "2026-07-17T07:14:12.678568+00:00",
+      "usage": {
+        "completion_tokens": 9396,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": null,
+          "completion_tokens_modality": {
+            "text": 9396
+          },
+          "reasoning_tokens": 8209,
+          "rejected_prediction_tokens": 0
+        },
+        "prompt_tokens": 41737,
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cached_tokens": null,
+          "prompt_tokens_modality": {
+            "text": 41737
+          }
+        },
+        "total_tokens": 51133,
+        "traffic_type": "provisioned_throughput"
+      }
+    }
+  ],
+  "files": [
+    "README.md",
+    "CURRENT_STATE.md",
+    "ROLE_IN_ECOSYSTEM.md",
+    "TARGET_ARCHITECTURE.md",
+    "INTEGRATION_CONTRACTS.md",
+    "IMPLEMENTATION_PLAN.md",
+    "TEST_AND_ACCEPTANCE_PLAN.md",
+    "RISKS_AND_OPEN_QUESTIONS.md",
+    "AGENT_HANDOFF.md",
+    "implementation-manifest.yaml",
+    "generation-metadata.json"
+  ],
+  "finish_reason": "stop",
+  "hash_input_files": [
+    "README.md",
+    "CURRENT_STATE.md",
+    "ROLE_IN_ECOSYSTEM.md",
+    "TARGET_ARCHITECTURE.md",
+    "INTEGRATION_CONTRACTS.md",
+    "IMPLEMENTATION_PLAN.md",
+    "TEST_AND_ACCEPTANCE_PLAN.md",
+    "RISKS_AND_OPEN_QUESTIONS.md",
+    "AGENT_HANDOFF.md",
+    "implementation-manifest.yaml"
+  ],
+  "identifier": "jedisherpa__jack-script",
+  "identity": "repository-docs-jedisherpa__jack-script",
+  "independence_control": "The author sees only frozen source evidence, the package specification, governance, and the prior source audit. A different model family performs evidence audit and final approval.",
+  "model_requested": "gemini-3.1-pro-preview",
+  "model_returned": "gemini-3.1-pro-preview",
+  "model_route": "sandbox_openai_compatible_proxy_chat_completions",
+  "output_chars": 29458,
+  "output_dir": "repository-docs/jedisherpa__jack-script",
+  "output_sha256": "e3655a5e1cdd6b303f10e9eb40bd6e63d40eb69a5b6ad833cb5bdf5ea0f054f0",
+  "package_files": [
+    "README.md",
+    "CURRENT_STATE.md",
+    "ROLE_IN_ECOSYSTEM.md",
+    "TARGET_ARCHITECTURE.md",
+    "INTEGRATION_CONTRACTS.md",
+    "IMPLEMENTATION_PLAN.md",
+    "TEST_AND_ACCEPTANCE_PLAN.md",
+    "RISKS_AND_OPEN_QUESTIONS.md",
+    "AGENT_HANDOFF.md",
+    "implementation-manifest.yaml",
+    "generation-metadata.json"
+  ],
+  "package_generation_status": "corrected_after_evidence_audit",
+  "package_sha256": "9e423f2fb228b8aacb361e05e8777402aa6fc801f51d191172bfa1ba08e70c48",
+  "production_branch": "main",
+  "prompt_chars": 86842,
+  "prompt_sha256": "604f6373a86cf162223bd67f32569297d11146598fcbcb5b02c0343c5587f73f",
+  "provider": "Manus built-in LLM proxy",
+  "publication_status": "not_published",
+  "reasoning_effort": "default",
+  "remote_verification_status": "not_verified",
+  "repository": "jedisherpa/jack-script",
+  "request_id": "chatcmpl-llm-router-openai",
+  "source_packet_sha256": "e99dbe560025e9165d5625f9cb46faf26270859f30f2cc1d1ab0dbebafc7c439",
+  "stage": "last20_repository_documentation_package",
+  "started_at": "2026-07-17T07:10:26.347051+00:00",
+  "status": "complete",
+  "total_chars": 32188,
+  "usage": {
+    "completion_tokens": 8436,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": 0,
+      "audio_tokens": null,
+      "completion_tokens_modality": {
+        "text": 8436
+      },
+      "reasoning_tokens": 3382,
+      "rejected_prediction_tokens": 0
+    },
+    "prompt_tokens": 25590,
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": null,
+      "prompt_tokens_modality": {
+        "text": 25590
+      }
+    },
+    "total_tokens": 34026,
+    "traffic_type": "provisioned_throughput"
+  }
+}
