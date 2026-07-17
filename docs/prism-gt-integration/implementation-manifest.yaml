@@ -1,0 +1,80 @@
+repository: jedisherpa/jack-script
+production_branch: main
+baseline_commit: 1676c549e438899a325471c32dc480e4f5f87d4b
+target_role: local_first_screenwriting_and_stage_gated_video_production_workstation
+workstreams:
+- id: ws-auth-integration
+  name: Prism GT Authentication Integration
+  status: proposed
+  owner: pending-owner-decision
+- id: ws-data-sync
+  name: Campaign and Script Synchronization
+  status: proposed
+  owner: pending-owner-decision
+milestones:
+- id: ms-auth-approved
+  name: Authentication Contract Approved
+  status: proposed
+  dependencies: []
+- id: ms-sync-implemented
+  name: Synchronization Logic Implemented
+  status: proposed
+  dependencies:
+  - ms-auth-approved
+dependencies: []
+contracts:
+- id: contract-hedra-api
+  name: Hedra Media Generation
+  type: observed
+  producer: Hedra
+  consumer: jedisherpa/jack-script
+  owner: external provider owner unknown/not recorded in frozen source
+  protocol_or_payload: REST/JSON over HTTPS. Multipart form data for asset uploads
+  security: Server-side API keys
+  errors: Mapped to safe HTTP responses
+  versioning: external provider versioning unknown/not recorded in frozen source
+  approval_boundary: not approved/locked by this package
+- id: contract-elevenlabs-api
+  name: ElevenLabs TTS
+  type: observed
+  producer: ElevenLabs
+  consumer: jedisherpa/jack-script
+  owner: external provider owner unknown/not recorded in frozen source
+  protocol_or_payload: REST/JSON over HTTPS. Multipart form data for asset uploads
+  security: Server-side API keys
+  errors: Mapped to safe HTTP responses
+  versioning: external provider versioning unknown/not recorded in frozen source
+  approval_boundary: not approved/locked by this package
+- id: contract-prism-sync
+  name: Prism GT Project Sync
+  type: proposed
+  producer: Prism GT Ecosystem Dashboard
+  consumer: jedisherpa/jack-script
+  gate: pending-owner-decision
+  owner: owner_decision_required
+  protocol_or_payload: proposed REST/JSON via app/api/campaigns/route.ts
+  security: requires implementation of shared auth mechanism
+  errors: proposed/unknown
+  versioning: proposed/unknown
+  approval_boundary: pending named owner decision
+test_gates:
+- id: gate-unit-tests
+  command: npm test
+  status: observed
+- id: gate-typecheck
+  command: npm run typecheck
+  status: observed
+- id: gate-desktop-verify
+  command: npm run desktop:verify-release
+  status: observed
+approval_gates:
+- id: gate-contract-approval
+  name: Owner Approval for Prism GT Contracts
+  status: pending
+central_integration_repository: https://github.com/jedisherpa/Prism-GT-Broadcast-Integration/tree/7accbf747151db8412dcec325336ef64b53d93f9
+evidence_profile:
+  role: Local-first screenwriting and stage-gated video production workstation
+  branch: main
+  commit: 1676c549e438899a325471c32dc480e4f5f87d4b
+  production_branch: main
+  baseline_commit: 1676c549e438899a325471c32dc480e4f5f87d4b
